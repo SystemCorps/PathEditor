@@ -1,0 +1,33 @@
+﻿<Properties StartupConfiguration="{DFD58A98-C061-4DC3-C782-DCC6DC6A5EFF}|">
+  <MonoDevelop.Ide.Workbench ActiveDocument="Assets/OpenSocket.cs">
+    <Files>
+      <File FileName="Assets/OpenSocket.cs" Line="14" Column="42" />
+    </Files>
+    <Pads>
+      <Pad Id="ProjectPad">
+        <State name="__root__">
+          <Node name="PathEditor" expanded="True">
+            <Node name="Assets" expanded="True">
+              <Node name="OpenSocket.cs" selected="True" />
+            </Node>
+          </Node>
+        </State>
+      </Pad>
+      <Pad Id="MonoDevelop.Debugger.WatchPad">
+        <State />
+      </Pad>
+      <Pad Id="MonoDevelop.UnitTesting.TestPad">
+        <State name="__root__">
+          <Node name="PathEditor" expanded="True" selected="True" />
+        </State>
+      </Pad>
+    </Pads>
+  </MonoDevelop.Ide.Workbench>
+  <MonoDevelop.Ide.DebuggingService.PinnedWatches />
+  <MonoDevelop.Ide.Workspace ActiveConfiguration="Debug" />
+  <MonoDevelop.Ide.ItemProperties.Assembly-CSharp PreferredExecutionTarget="9f0b25c9-5589-4332-86f1-bf56c5ce8dec" />
+  <MonoDevelop.Ide.DebuggingService.Breakpoints>
+    <BreakpointStore />
+  </MonoDevelop.Ide.DebuggingService.Breakpoints>
+  <MultiItemStartupConfigurations />
+</Properties>
