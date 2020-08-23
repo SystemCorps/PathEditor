@@ -74,6 +74,29 @@ public class CPC_CameraPathInspector : Editor
 
     private bool hasScrollBar = false;
 
+    float robotMaxSpeed = 1.5F;
+    float robotMaxHeight = 0.8602F + 0.461F;
+    float robotCtrlRate = 20.0F;
+    // Robot related
+    void DrawRobotPropertyWindow()
+    {
+        //GUI.enabled = Application.isPlaying;
+        //time = EditorGUILayout.FloatField("", time, GUILayout.MinWidth(5), GUILayout.MaxWidth(50));
+        EditorGUILayout.LabelField("Maximum Speed of Mobile Robot (m/s)");
+        robotMaxSpeed = EditorGUILayout.FloatField("", robotMaxSpeed);
+        EditorGUILayout.LabelField("Maximum Reachable Height of Manipulator (m)");
+        robotMaxHeight = EditorGUILayout.FloatField("", robotMaxHeight);
+        EditorGUILayout.LabelField("Mobile Manipulator Control Rate (Hz)");
+        robotCtrlRate = EditorGUILayout.FloatField("", Math.Abs(robotCtrlRate));
+    }
+
+    // Added function (Halt)
+    private GUIContent holdButtonContent = new GUIContent("Hold-Off", "Holding position");
+    float totalHoldTime;
+    float minExecTime;
+    //private GUIContent moveButtonContent = new GUIContent("Move", "Pass position");
+
+
     void OnEnable()
     {
         EditorApplication.update += Update;
@@ -111,6 +134,10 @@ public class CPC_CameraPathInspector : Editor
         GUILayout.Space(5);
         GUILayout.Box("", GUILayout.Width(Screen.width - 20), GUILayout.Height(3));
         GUILayout.Space(5);
+        DrawRobotPropertyWindow();
+        GUILayout.Space(5);
+        GUILayout.Box("", GUILayout.Width(Screen.width - 20), GUILayout.Height(3));
+        GUILayout.Space(5);
         DrawBasicSettings();
         GUILayout.Space(5);
         GUILayout.Box("", GUILayout.Width(Screen.width-20), GUILayout.Height(3));
@@ -122,6 +149,7 @@ public class CPC_CameraPathInspector : Editor
         DrawWaypointList();
         GUILayout.Space(10);
         DrawRawValues();
+
         serializedObjectTarget.ApplyModifiedProperties();
     }
 
@@ -266,6 +294,7 @@ public class CPC_CameraPathInspector : Editor
                 t.points[pointReorderableList.index].rotation = SceneView.lastActiveSceneView.camera.transform.rotation;
                 SceneView.lastActiveSceneView.Repaint();
             }
+
             rect.height = (rect.height + 1) * 2;
             rect.y = startRectY;
             rect.x += rect.width + 2;
@@ -276,6 +305,87 @@ public class CPC_CameraPathInspector : Editor
                 Undo.RecordObject(t, "Deleted a waypoint");
                 t.points.Remove(t.points[index]);
                 SceneView.RepaintAll();
+            }
+
+
+            // New buttons
+            //GUILayout.Label("#" + (index + 1));
+            if (t.points[index].hold)
+            {
+                holdButtonContent.text = "#" + (index + 1) + " Hold-On";
+                holdButtonContent.tooltip = "Pass position";
+            }
+            else
+            {
+                holdButtonContent.text = "#" + (index + 1) + " Hold-Off";
+                holdButtonContent.tooltip = "Holding position";
+            }
+
+            EditorGUILayout.BeginHorizontal("box");
+            if (GUILayout.Button(holdButtonContent))
+            {
+                pointReorderableList.index = index;
+                selectedIndex = index;
+                if (t.points[pointReorderableList.index].hold)
+                {
+
+                    holdButtonContent.text = "#" + (index + 1) + " Hold-On";
+                    holdButtonContent.tooltip = "Pass position";
+                    Undo.RecordObject(t, "Pass");
+                    t.points[pointReorderableList.index].hold = false;
+                    SceneView.RepaintAll();
+                }
+                else
+                {
+                    holdButtonContent.text = "#" + (index + 1) + " Hold-Off";
+                    holdButtonContent.tooltip = "Holding position";
+                    Undo.RecordObject(t, "Hold");
+                    t.points[pointReorderableList.index].hold = true;
+                    SceneView.RepaintAll();
+                }
+            }
+            GUILayout.Label("", GUILayout.Width(60));
+            t.points[index].holdTime = Math.Abs(EditorGUILayout.FloatField("Holding Time (sec)", t.points[index].holdTime));
+
+            EditorGUILayout.EndHorizontal();
+
+            totalHoldTime = 0;
+            minExecTime = 10.0F;
+            bool holdFlag = false;
+            for (int i = 0; i < t.points.Count; i++)
+            {
+                holdFlag = holdFlag || t.points[i].hold;
+                if (t.points[i].hold) totalHoldTime += t.points[i].holdTime;
+            }
+
+            if (holdFlag && playOnAwakeTimeProperty.floatValue < totalHoldTime + minExecTime)
+            {
+                playOnAwakeTimeProperty.floatValue = totalHoldTime + minExecTime;
+                SceneView.RepaintAll();
+            }
+            else if (playOnAwakeTimeProperty.floatValue < minExecTime)
+            {
+                playOnAwakeTimeProperty.floatValue = minExecTime;
+                SceneView.RepaintAll();
+            }
+
+            if (holdFlag && time < totalHoldTime + minExecTime)
+            {
+                time = totalHoldTime + minExecTime;
+                SceneView.RepaintAll();
+            }
+            else if (time < minExecTime)
+            {
+                time = minExecTime;
+                SceneView.RepaintAll();
+            }
+
+            for (int i = 0; i < t.points.Count; i++)
+            {
+                if (t.points[i].position.y > robotMaxHeight)
+                {
+                    t.points[i].position.y = robotMaxHeight;
+                }
             }
         };
 
@@ -486,7 +596,7 @@ public class CPC_CameraPathInspector : Editor
         Rect r = GUILayoutUtility.GetRect(Screen.width - 16, 18);
         //r.height = 18;
         r.y -= 10;
-        GUILayout.Space(-30);
+        GUILayout.Space(-10);
         GUILayout.BeginHorizontal();
         if (GUILayout.Button(addPointContent))
         {
@@ -494,7 +604,9 @@ public class CPC_CameraPathInspector : Editor
             switch (waypointMode)
             {
                 case CPC_ENewWaypointMode.SceneCamera:
-                    t.points.Add(new CPC_Point(SceneView.lastActiveSceneView.camera.transform.position, SceneView.lastActiveSceneView.camera.transform.rotation));
+                    CPC_Point temp = new CPC_Point(SceneView.lastActiveSceneView.camera.transform.position, SceneView.lastActiveSceneView.camera.transform.rotation);
+                    if (temp.position.y > robotMaxHeight) temp.position.y = robotMaxHeight;
+                    t.points.Add(temp);
                     break;
                 case CPC_ENewWaypointMode.LastWaypoint:
                     if (t.points.Count > 0)

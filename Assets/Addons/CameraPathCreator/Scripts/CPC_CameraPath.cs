@@ -37,6 +37,9 @@ public class CPC_Point
     public CPC_ECurveType curveTypePosition;
     public AnimationCurve positionCurve;
     public bool chained;
+    // Customized
+    public bool hold;
+    public float holdTime;
 
     public CPC_Point(Vector3 pos, Quaternion rot)
     {
@@ -49,6 +52,8 @@ public class CPC_Point
         curveTypePosition = CPC_ECurveType.Linear;
         positionCurve = AnimationCurve.Linear(0,0,1,1);
         chained = true;
+        hold = false;
+        holdTime = 0.0F;
     }
 }
 
@@ -73,6 +78,7 @@ public class CPC_CameraPath : MonoBehaviour
 
     private bool paused = false;
     private bool playing = false;
+
 
     void Start ()
     {
@@ -133,7 +139,20 @@ public class CPC_CameraPath : MonoBehaviour
     /// <param name="seconds">New time in seconds for entire path</param>
     public void UpdateTimeInSeconds(float seconds)
     {
-        timePerSegment = seconds / ((looped) ? points.Count : points.Count - 1);
+        int holdCount = 0;
+        for (int i=0; i < points.Count; i++)
+        {
+            if (points[i].hold) holdCount++;
+        }
+
+        if (holdCount == 0)
+        {
+            timePerSegment = seconds / ((looped) ? points.Count : points.Count - 1);
+        }
+        else
+        {
+            timePerSegment = seconds / ((looped) ? (points.Count - holdCount) : (points.Count - 1 - holdCount));
+        }
     }
 
     /// <summary>
@@ -221,10 +240,13 @@ public class CPC_CameraPath : MonoBehaviour
             selectedCamera.transform.rotation = Quaternion.LookRotation((target.transform.position - selectedCamera.transform.position).normalized);
     }
 
+
+    // Points Generation
     IEnumerator FollowPath(float time)
     {
         UpdateTimeInSeconds(time);
         currentWaypointIndex = 0;
+        bool holdDone = false;
         while (currentWaypointIndex < points.Count)
         {
             currentTimeInWaypoint = 0;
@@ -232,16 +254,30 @@ public class CPC_CameraPath : MonoBehaviour
             {
                 if (!paused)
                 {
-                    currentTimeInWaypoint += Time.deltaTime / timePerSegment;
-                    selectedCamera.transform.position = GetBezierPosition(currentWaypointIndex, currentTimeInWaypoint);
-                    if (!lookAtTarget)
-                        selectedCamera.transform.rotation = GetLerpRotation(currentWaypointIndex, currentTimeInWaypoint);
+                    if (!points[currentWaypointIndex].hold || holdDone)
+                    {
+                        currentTimeInWaypoint += Time.deltaTime / timePerSegment;
+                        selectedCamera.transform.position = GetBezierPosition(currentWaypointIndex, currentTimeInWaypoint);
+                        
+                        if (!lookAtTarget)
+                            selectedCamera.transform.rotation = GetLerpRotation(currentWaypointIndex, currentTimeInWaypoint);
+                        else
+                            selectedCamera.transform.rotation = Quaternion.LookRotation((target.transform.position - selectedCamera.transform.position).normalized);
+                    }
                     else
-                        selectedCamera.transform.rotation = Quaternion.LookRotation((target.transform.position - selectedCamera.transform.position).normalized);
+                    {
+                        currentTimeInWaypoint += Time.deltaTime / points[currentWaypointIndex].holdTime;
+                    }
                 }
                 yield return 0;
             }
-            ++currentWaypointIndex;
+            if (!points[currentWaypointIndex].hold || holdDone)
+            {
+                ++currentWaypointIndex;
+                holdDone = false;
+            }
+            else holdDone = true;
+
             if (currentWaypointIndex == points.Count - 1 && !looped) break;
             if (currentWaypointIndex == points.Count && afterLoop == CPC_EAfterLoop.Continue) currentWaypointIndex = 0;
         }
@@ -281,6 +317,8 @@ public class CPC_CameraPath : MonoBehaviour
 #if UNITY_EDITOR
     public void OnDrawGizmos()
     {
+        //Gizmos.color = Color.blue;
+        //Gizmos.DrawSphere(points[3].position, 0.1f);
         if (UnityEditor.Selection.activeGameObject == gameObject || alwaysShow)
         {
             if (points.Count >= 2)
