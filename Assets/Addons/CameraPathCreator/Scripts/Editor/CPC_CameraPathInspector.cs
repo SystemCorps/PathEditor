@@ -90,6 +90,19 @@ public class CPC_CameraPathInspector : Editor
         robotCtrlRate = EditorGUILayout.FloatField("", Math.Abs(robotCtrlRate));
     }
 
+    void DrawPathGenWindow()
+    {
+        if (GUILayout.Button("Generate"))
+        {
+            t.GenPath(playOnAwakeTimeProperty.floatValue, robotCtrlRate);
+        }
+
+        if (GUILayout.Button("Save"))
+        {
+
+        }
+    }
+
     // Added function (Halt)
     private GUIContent holdButtonContent = new GUIContent("Hold-Off", "Holding position");
     float totalHoldTime;
@@ -135,6 +148,10 @@ public class CPC_CameraPathInspector : Editor
         GUILayout.Box("", GUILayout.Width(Screen.width - 20), GUILayout.Height(3));
         GUILayout.Space(5);
         DrawRobotPropertyWindow();
+        GUILayout.Space(5);
+        GUILayout.Box("", GUILayout.Width(Screen.width - 20), GUILayout.Height(3));
+        GUILayout.Space(5);
+        DrawPathGenWindow();
         GUILayout.Space(5);
         GUILayout.Box("", GUILayout.Width(Screen.width - 20), GUILayout.Height(3));
         GUILayout.Space(5);

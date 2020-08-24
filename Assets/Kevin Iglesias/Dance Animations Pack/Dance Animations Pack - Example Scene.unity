@@ -38,7 +38,7 @@ RenderSettings:
   m_ReflectionIntensity: 1
   m_CustomReflection: {fileID: 0}
   m_Sun: {fileID: 0}
-  m_IndirectSpecularColor: {r: 0.4465791, g: 0.49641317, b: 0.57481784, a: 1}
+  m_IndirectSpecularColor: {r: 0.4465785, g: 0.49641228, b: 0.57481676, a: 1}
   m_UseRadianceAmbientProbe: 0
 --- !u!157 &3
 LightmapSettings:
@@ -610,12 +610,12 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 2edac0b6f5e12204bbc4b9f4391db7ec, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  useMainCamera: 1
+  useMainCamera: 0
   selectedCamera: {fileID: 0}
   lookAtTarget: 1
   target: {fileID: 0}
   playOnAwake: 1
-  playOnAwakeTime: 20
+  playOnAwakeTime: 25
   points:
   - position: {x: 9.39567, y: 1.3212, z: 2.3044138}
     rotation: {x: -0.043619834, y: 0.87980354, z: -0.08233347, w: -0.46611616}
@@ -672,8 +672,8 @@ MonoBehaviour:
       m_PostInfinity: 2
       m_RotationOrder: 4
     chained: 1
-    hold: 0
-    holdTime: 0
+    hold: 1
+    holdTime: 5
   - position: {x: 5.8254995, y: 1.3212, z: 3.4949045}
     rotation: {x: -0.010709816, y: 0.98905057, z: -0.09255695, w: -0.11444445}
     handleprev: {x: 0.4926815, y: -0.061101675, z: -0.29454017}

@@ -57,6 +57,24 @@ public class CPC_Point
     }
 }
 
+public class RobotPath
+{
+    public Vector3 position;
+    public Quaternion rotation;
+    public float time;
+    public float mobileSpeed;
+    public float travelRange;
+
+    public RobotPath(float t, Vector3 pos, Quaternion rot, float spd, float travel)
+    {
+        time = t;
+        position = pos;
+        rotation = rot;
+        mobileSpeed = spd;
+        travelRange = travel;
+    }
+}
+
 public class CPC_CameraPath : MonoBehaviour
 {
 
@@ -78,6 +96,10 @@ public class CPC_CameraPath : MonoBehaviour
 
     private bool paused = false;
     private bool playing = false;
+
+
+    // Robot Path
+    public List<RobotPath> rpaths = new List<RobotPath>();
 
 
     void Start ()
@@ -241,7 +263,70 @@ public class CPC_CameraPath : MonoBehaviour
     }
 
 
-    // Points Generation
+    public void GenPath(float time, float rate)
+    {
+        rpaths = new List<RobotPath>();
+        //int length = (int)(time / rate) + 1;
+        if (rate == 0) return;
+        float step = 1.0F / rate;
+        float travelRange = 0.0F;
+
+        UpdateTimeInSeconds(time);
+        currentWaypointIndex = 0;
+        bool holdDone = false;
+        float currentTime = 0.0F;
+
+        while (currentWaypointIndex < points.Count)
+        {
+            currentTimeInWaypoint = 0;
+            Vector3 position;
+            Quaternion rotation;
+            float speed = 0.0F;
+            while (currentTimeInWaypoint < 1)
+            {
+                if (!points[currentWaypointIndex].hold || holdDone)
+                {
+                    currentTimeInWaypoint += step / timePerSegment;
+                    position = GetBezierPosition(currentWaypointIndex, currentTimeInWaypoint);
+                    rotation = GetLerpRotation(currentWaypointIndex, currentTimeInWaypoint);
+                }
+                else
+                {
+                    currentTimeInWaypoint += step / timePerSegment;
+                    position = GetBezierPosition(currentWaypointIndex, 0.0F);
+                    rotation = GetLerpRotation(currentWaypointIndex, 0.0F);
+                }
+
+                if (rpaths.Count > 0)
+                {
+                    Vector3 prePosition = rpaths[rpaths.Count - 1].position;
+                    Vector3 curPosition = position;
+                    prePosition.y = 0;
+                    curPosition.y = 0;
+                    float dist = Vector3.Distance(curPosition, prePosition);
+                    speed = dist / (1.0F / rate);
+                    travelRange += dist;
+                }
+
+                RobotPath temp = new RobotPath(currentTime, position, rotation, speed, travelRange);
+                rpaths.Add(temp);
+                currentTime += step;
+            }
+
+            if (!points[currentWaypointIndex].hold || holdDone)
+            {
+                ++currentWaypointIndex;
+                holdDone = false;
+            }
+            else holdDone = true;
+
+            if (currentWaypointIndex == points.Count - 1 && !looped) break;
+            if (currentWaypointIndex == points.Count && afterLoop == CPC_EAfterLoop.Continue) currentWaypointIndex = 0;
+        }    
+    }
+
+
+
     IEnumerator FollowPath(float time)
     {
         UpdateTimeInSeconds(time);
@@ -267,6 +352,12 @@ public class CPC_CameraPath : MonoBehaviour
                     else
                     {
                         currentTimeInWaypoint += Time.deltaTime / points[currentWaypointIndex].holdTime;
+                        selectedCamera.transform.position = GetBezierPosition(currentWaypointIndex, 0.0F);
+
+                        if (!lookAtTarget)
+                            selectedCamera.transform.rotation = GetLerpRotation(currentWaypointIndex, 0.0F);
+                        else
+                            selectedCamera.transform.rotation = Quaternion.LookRotation((target.transform.position - selectedCamera.transform.position).normalized);
                     }
                 }
                 yield return 0;
@@ -309,7 +400,7 @@ public class CPC_CameraPath : MonoBehaviour
                         points[nextIndex].position, t), t), t);
     }
 
-    private Quaternion GetLerpRotation(int pointIndex, float time)
+    public Quaternion GetLerpRotation(int pointIndex, float time)
     {
         return Quaternion.LerpUnclamped(points[pointIndex].rotation, points[GetNextIndex(pointIndex)].rotation, points[pointIndex].rotationCurve.Evaluate(time));
     }
