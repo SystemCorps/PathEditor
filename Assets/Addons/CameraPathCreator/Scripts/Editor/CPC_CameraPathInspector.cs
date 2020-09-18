@@ -77,6 +77,8 @@ public class CPC_CameraPathInspector : Editor
     float robotMaxSpeed = 1.5F;
     float robotMaxHeight = 0.8602F + 0.461F;
     float robotCtrlRate = 20.0F;
+
+    bool canSave = false;
     // Robot related
     void DrawRobotPropertyWindow()
     {
@@ -90,16 +92,29 @@ public class CPC_CameraPathInspector : Editor
         robotCtrlRate = EditorGUILayout.FloatField("", Math.Abs(robotCtrlRate));
     }
 
+
     void DrawPathGenWindow()
     {
         if (GUILayout.Button("Generate"))
         {
-            t.GenPath(playOnAwakeTimeProperty.floatValue, robotCtrlRate);
+
+            //t.GenPath(playOnAwakeTimeProperty.floatValue, robotCtrlRate);
+            t.GenPath(time, robotCtrlRate);
+            canSave = true;
         }
 
         if (GUILayout.Button("Save"))
         {
-
+            string directory = "./test.txt";
+            if (canSave)
+            {
+                directory = EditorUtility.SaveFilePanel("Save Camera Path as txt", "./", "CameraPath.txt", "txt");
+                if (directory.Length != 0)
+                {
+                    t.PathSave(directory);
+                }
+                
+            }
         }
     }
 
@@ -317,12 +332,7 @@ public class CPC_CameraPathInspector : Editor
             rect.x += rect.width + 2;
             rect.width = 20;
 
-            if (GUI.Button(rect, deletePointContent))
-            {
-                Undo.RecordObject(t, "Deleted a waypoint");
-                t.points.Remove(t.points[index]);
-                SceneView.RepaintAll();
-            }
+            
 
 
             // New buttons
@@ -403,6 +413,14 @@ public class CPC_CameraPathInspector : Editor
                 {
                     t.points[i].position.y = robotMaxHeight;
                 }
+            }
+
+            if (GUI.Button(rect, deletePointContent))
+            {
+                Undo.RecordObject(t, "Deleted a waypoint");
+                //selectedIndex = 0;
+                t.points.Remove(t.points[index]);
+                SceneView.RepaintAll();
             }
         };
 

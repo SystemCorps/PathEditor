@@ -1,5 +1,6 @@
 ﻿using System.Collections;
 using System.Collections.Generic;
+using System.IO;
 using UnityEngine;
 
 [System.Serializable]
@@ -100,6 +101,7 @@ public class CPC_CameraPath : MonoBehaviour
 
     // Robot Path
     public List<RobotPath> rpaths = new List<RobotPath>();
+    public string rpathStr;
 
 
     void Start ()
@@ -262,6 +264,24 @@ public class CPC_CameraPath : MonoBehaviour
             selectedCamera.transform.rotation = Quaternion.LookRotation((target.transform.position - selectedCamera.transform.position).normalized);
     }
 
+    
+    public void PathToStr()
+    {
+        rpathStr = "";
+        for (int i = 0; i < rpaths.Count; i++)
+        {
+            string temp = "" + rpaths[i].time + "," + rpaths[i].position.x + "," + rpaths[i].position.y + "," + rpaths[i].position.z
+                + "," + rpaths[i].rotation.w + "," + rpaths[i].rotation.x + "," + rpaths[i].rotation.y + "," + rpaths[i].rotation.z + "\n";
+            temp = temp.Replace("(", "").Replace(")", "");
+            rpathStr += temp;
+        }
+    }
+
+    public void PathSave(string directory)
+    {
+        File.WriteAllText(directory, rpathStr);
+    }
+
 
     public void GenPath(float time, float rate)
     {
@@ -322,7 +342,9 @@ public class CPC_CameraPath : MonoBehaviour
 
             if (currentWaypointIndex == points.Count - 1 && !looped) break;
             if (currentWaypointIndex == points.Count && afterLoop == CPC_EAfterLoop.Continue) currentWaypointIndex = 0;
-        }    
+        }
+
+        PathToStr();
     }
 
 
