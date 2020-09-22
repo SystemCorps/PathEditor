@@ -1,8 +1,8 @@
 ﻿<Properties StartupConfiguration="{DFD58A98-C061-4DC3-C782-DCC6DC6A5EFF}|">
   <MonoDevelop.Ide.Workbench ActiveDocument="Assets/Addons/CameraPathCreator/Scripts/Editor/CPC_CameraPathInspector.cs">
     <Files>
-      <File FileName="Assets/Addons/CameraPathCreator/Scripts/Editor/CPC_CameraPathInspector.cs" Line="421" Column="19" />
-      <File FileName="Assets/Addons/CameraPathCreator/Scripts/CPC_CameraPath.cs" Line="379" Column="43" />
+      <File FileName="Assets/Addons/CameraPathCreator/Scripts/Editor/CPC_CameraPathInspector.cs" Line="374" Column="60" />
+      <File FileName="Assets/Addons/CameraPathCreator/Scripts/CPC_CameraPath.cs" />
     </Files>
     <Pads>
       <Pad Id="ProjectPad">
@@ -26,7 +26,7 @@
   </MonoDevelop.Ide.Workbench>
   <MonoDevelop.Ide.DebuggingService.PinnedWatches />
   <MonoDevelop.Ide.Workspace ActiveConfiguration="Debug" />
-  <MonoDevelop.Ide.ItemProperties.Assembly-CSharp PreferredExecutionTarget="952c3005-80e1-41cf-bca1-7921ff74f2ae" />
+  <MonoDevelop.Ide.ItemProperties.Assembly-CSharp PreferredExecutionTarget="d31f7726-77df-4344-a2cc-6800478abc57" />
   <MonoDevelop.Ide.DebuggingService.Breakpoints>
     <BreakpointStore />
   </MonoDevelop.Ide.DebuggingService.Breakpoints>

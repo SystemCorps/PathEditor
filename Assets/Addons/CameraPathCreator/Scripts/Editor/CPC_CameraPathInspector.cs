@@ -77,6 +77,8 @@ public class CPC_CameraPathInspector : Editor
     float robotMaxSpeed = 1.5F;
     float robotMaxHeight = 0.8602F + 0.461F;
     float robotCtrlRate = 20.0F;
+    float robotMaxAcc = 1.5F;
+    float robotAccTime = 1.0F;
 
     bool canSave = false;
     // Robot related
@@ -86,10 +88,44 @@ public class CPC_CameraPathInspector : Editor
         //time = EditorGUILayout.FloatField("", time, GUILayout.MinWidth(5), GUILayout.MaxWidth(50));
         EditorGUILayout.LabelField("Maximum Speed of Mobile Robot (m/s)");
         robotMaxSpeed = EditorGUILayout.FloatField("", robotMaxSpeed);
+        EditorGUILayout.LabelField("Max Acceleration Time of Mobile Robot (m/s^2)");
+        robotMaxAcc = EditorGUILayout.FloatField("", robotMaxAcc);
+        robotAccTime = robotMaxSpeed / robotMaxAcc;
         EditorGUILayout.LabelField("Maximum Reachable Height of Manipulator (m)");
         robotMaxHeight = EditorGUILayout.FloatField("", robotMaxHeight);
         EditorGUILayout.LabelField("Mobile Manipulator Control Rate (Hz)");
         robotCtrlRate = EditorGUILayout.FloatField("", Math.Abs(robotCtrlRate));
+    }
+
+
+    float CalMinExecTime(CPC_Point prev, CPC_Point current)
+    {
+        // UnityEditor.Handles.DrawBezier(index.position, indexNext.position, index.position + index.handlenext, indexNext.position + indexNext.handleprev,((UnityEditor.Selection.activeGameObject == gameObject) ? visual.pathColor : visual.inactivePathColor), null, 5);
+        Vector3 startPosition = prev.position;
+        Vector3 endPosition = current.position;
+        Vector3 startTangent = prev.position + prev.handlenext;
+        Vector3 endTangent = current.position + current.handleprev;
+
+        Vector3[] bezierPoints;
+        int division = 100;
+
+        bezierPoints = UnityEditor.Handles.MakeBezierPoints(startPosition, endPosition, startTangent, endTangent, division);
+
+        float length = 0;
+
+        for (int i = 1; i < bezierPoints.Length; i++)
+        {
+            Vector3 relPosition = bezierPoints[i] - bezierPoints[i - 1];
+            length = length + relPosition.sqrMagnitude;
+        }
+
+        float accLength = (robotMaxAcc * robotAccTime * robotAccTime) / 2;
+        float constLength = length - 2 * accLength;
+
+        float constTime = constLength / robotMaxSpeed;
+        float totalTime = constTime + 2 * robotAccTime;
+
+        return totalTime;
     }
 
 
@@ -332,7 +368,49 @@ public class CPC_CameraPathInspector : Editor
             rect.x += rect.width + 2;
             rect.width = 20;
 
-            
+
+
+            // Should be fixed
+            // startTime increases in loop <- should not!!!
+            //EditorGUIUtility.LookLikeControls();
+            //EditorGUILayout.BeginHorizontal("box");
+            EditorGUILayout.BeginVertical("Box");
+            string execText;
+            float execTime;
+            if (index > 0)
+            {
+                string execText2;
+                execText2 = "#" + (index + 1) + " Start Time: " + t.points[index].startTime + " (sec)";
+                EditorGUILayout.LabelField(execText2);
+                //EditorGUILayout.BeginVertical("box");
+                //EditorGUILayout.Space(3);
+                execText = "Exec Time btw #" + index + " - #" + (index + 1) + " (sec)";
+                execTime = EditorGUILayout.FloatField(execText, t.points[index].startTime);
+                if (t.points[index].hold)
+                {
+                    t.points[index].startTime = t.points[index - 1].startTime + t.points[index].holdTime + execTime;
+                }
+                //EditorGUILayout.EndVertical();
+            }
+            else
+            {
+                if (t.points[index].hold)
+                {
+                    execText = "#1 Start Time (same as holding time): " + t.points[index].holdTime + " (sec)";
+                    EditorGUILayout.LabelField(execText);
+                    t.points[index].startTime = t.points[index].holdTime;
+                }
+                else
+                {
+                    execText = "#1 Start Time (same as holding time): " + t.points[index].startTime + " (sec)";
+                    EditorGUILayout.LabelField(execText);
+                    t.points[index].startTime = 0.0F;
+                }
+            }
+
+            EditorGUILayout.EndVertical();
+            //EditorGUILayout.EndHorizontal();
+
 
 
             // New buttons
@@ -348,7 +426,7 @@ public class CPC_CameraPathInspector : Editor
                 holdButtonContent.tooltip = "Holding position";
             }
 
-            EditorGUILayout.BeginHorizontal("box");
+            EditorGUILayout.BeginHorizontal();
             if (GUILayout.Button(holdButtonContent))
             {
                 pointReorderableList.index = index;
@@ -374,6 +452,7 @@ public class CPC_CameraPathInspector : Editor
             GUILayout.Label("", GUILayout.Width(60));
             t.points[index].holdTime = Math.Abs(EditorGUILayout.FloatField("Holding Time (sec)", t.points[index].holdTime));
 
+
             EditorGUILayout.EndHorizontal();
 
             totalHoldTime = 0;
@@ -395,7 +474,7 @@ public class CPC_CameraPathInspector : Editor
                 playOnAwakeTimeProperty.floatValue = minExecTime;
                 SceneView.RepaintAll();
             }
-
+            
             if (holdFlag && time < totalHoldTime + minExecTime)
             {
                 time = totalHoldTime + minExecTime;
@@ -642,6 +721,7 @@ public class CPC_CameraPathInspector : Editor
                     CPC_Point temp = new CPC_Point(SceneView.lastActiveSceneView.camera.transform.position, SceneView.lastActiveSceneView.camera.transform.rotation);
                     if (temp.position.y > robotMaxHeight) temp.position.y = robotMaxHeight;
                     t.points.Add(temp);
+                    t.points[t.points.Count - 1].startTime = CalMinExecTime(t.points[t.points.Count - 2], t.points[t.points.Count - 1]);
                     break;
                 case CPC_ENewWaypointMode.LastWaypoint:
                     if (t.points.Count > 0)
@@ -651,6 +731,7 @@ public class CPC_CameraPathInspector : Editor
                         t.points.Add(new CPC_Point(Vector3.zero, Quaternion.identity));
                         Debug.LogWarning("No previous waypoint found to place this waypoint, defaulting position to world center");
                     }
+                    t.points[t.points.Count - 1].startTime = CalMinExecTime(t.points[t.points.Count - 2], t.points[t.points.Count - 1]);
                     break;
                 case CPC_ENewWaypointMode.WaypointIndex:
                     if (t.points.Count > waypointIndex-1 && waypointIndex > 0)
@@ -660,6 +741,7 @@ public class CPC_CameraPathInspector : Editor
                         t.points.Add(new CPC_Point(Vector3.zero, Quaternion.identity));
                         Debug.LogWarning("Waypoint index "+waypointIndex+" does not exist, defaulting position to world center");
                     }
+                    t.points[t.points.Count - 1].startTime = CalMinExecTime(t.points[t.points.Count - 2], t.points[t.points.Count - 1]);
                     break;
                 case CPC_ENewWaypointMode.WorldCenter:
                     t.points.Add(new CPC_Point(Vector3.zero, Quaternion.identity));

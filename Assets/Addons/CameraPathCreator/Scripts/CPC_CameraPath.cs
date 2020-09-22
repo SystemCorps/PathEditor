@@ -41,6 +41,7 @@ public class CPC_Point
     // Customized
     public bool hold;
     public float holdTime;
+    public float startTime;
 
     public CPC_Point(Vector3 pos, Quaternion rot)
     {
@@ -55,6 +56,7 @@ public class CPC_Point
         chained = true;
         hold = false;
         holdTime = 0.0F;
+        startTime = 0.0F;
     }
 }
 
@@ -101,6 +103,7 @@ public class CPC_CameraPath : MonoBehaviour
 
     // Robot Path
     public List<RobotPath> rpaths = new List<RobotPath>();
+    public List<float> execTime = new List<float>();
     public string rpathStr;
 
 
