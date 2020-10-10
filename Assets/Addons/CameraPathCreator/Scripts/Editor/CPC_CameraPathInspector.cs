@@ -388,7 +388,7 @@ public class CPC_CameraPathInspector : Editor
                 execTime = EditorGUILayout.FloatField(execText, t.points[index].startTime);
                 if (t.points[index].hold)
                 {
-                    t.points[index].startTime = t.points[index - 1].startTime + t.points[index].holdTime + execTime;
+                    //t.points[index].startTime = t.points[index - 1].startTime + t.points[index].holdTime + execTime;
                 }
                 //EditorGUILayout.EndVertical();
             }
