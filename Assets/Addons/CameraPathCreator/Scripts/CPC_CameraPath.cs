@@ -42,6 +42,8 @@ public class CPC_Point
     public bool hold;
     public float holdTime;
     public float startTime;
+    public float execTime;
+    public float minExecTime;
 
     public CPC_Point(Vector3 pos, Quaternion rot)
     {
@@ -57,6 +59,8 @@ public class CPC_Point
         hold = false;
         holdTime = 0.0F;
         startTime = 0.0F;
+        execTime = 0.0F;
+        minExecTime = 0.0F;
     }
 }
 
@@ -286,6 +290,20 @@ public class CPC_CameraPath : MonoBehaviour
     }
 
 
+    Vector3 GetRobotPath(int pointIndex, float relTime, float step, float threshold, float maxAcc, float maxVel)
+    {
+        Vector3 currentPosition = points[pointIndex].position;
+        Vector3 nextPosition;
+        float absTime = relTime * points[pointIndex].execTime;
+
+
+        bool stop = false;
+        while (!stop)
+        {
+
+        }
+    }
+
     public void GenPath(float time, float rate)
     {
         rpaths = new List<RobotPath>();
@@ -309,13 +327,13 @@ public class CPC_CameraPath : MonoBehaviour
             {
                 if (!points[currentWaypointIndex].hold || holdDone)
                 {
-                    currentTimeInWaypoint += step / timePerSegment;
+                    currentTimeInWaypoint += step / points[currentWaypointIndex].execTime;
                     position = GetBezierPosition(currentWaypointIndex, currentTimeInWaypoint);
                     rotation = GetLerpRotation(currentWaypointIndex, currentTimeInWaypoint);
                 }
                 else
                 {
-                    currentTimeInWaypoint += step / timePerSegment;
+                    currentTimeInWaypoint += step / points[currentWaypointIndex].holdTime;
                     position = GetBezierPosition(currentWaypointIndex, 0.0F);
                     rotation = GetLerpRotation(currentWaypointIndex, 0.0F);
                 }

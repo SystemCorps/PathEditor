@@ -376,7 +376,7 @@ public class CPC_CameraPathInspector : Editor
             //EditorGUILayout.BeginHorizontal("box");
             EditorGUILayout.BeginVertical("Box");
             string execText;
-            float execTime;
+            //float execTime;
             if (index > 0)
             {
                 string execText2;
@@ -385,12 +385,21 @@ public class CPC_CameraPathInspector : Editor
                 //EditorGUILayout.BeginVertical("box");
                 //EditorGUILayout.Space(3);
                 execText = "Exec Time btw #" + index + " - #" + (index + 1) + " (sec)";
-                execTime = EditorGUILayout.FloatField(execText, t.points[index].startTime);
+                t.points[index].execTime = EditorGUILayout.FloatField(execText, t.points[index].execTime);
+
+                if (t.points[index].execTime < t.points[index].minExecTime)
+                {
+                    t.points[index].execTime = t.points[index].minExecTime;
+                }
+
                 if (t.points[index].hold)
                 {
-                    //t.points[index].startTime = t.points[index - 1].startTime + t.points[index].holdTime + execTime;
+                    t.points[index].startTime = t.points[index - 1].startTime + t.points[index].holdTime + t.points[index].execTime;  
                 }
-                //EditorGUILayout.EndVertical();
+                else
+                {
+                    t.points[index].startTime = t.points[index - 1].startTime + t.points[index].execTime;
+                }
             }
             else
             {
@@ -721,7 +730,7 @@ public class CPC_CameraPathInspector : Editor
                     CPC_Point temp = new CPC_Point(SceneView.lastActiveSceneView.camera.transform.position, SceneView.lastActiveSceneView.camera.transform.rotation);
                     if (temp.position.y > robotMaxHeight) temp.position.y = robotMaxHeight;
                     t.points.Add(temp);
-                    t.points[t.points.Count - 1].startTime = CalMinExecTime(t.points[t.points.Count - 2], t.points[t.points.Count - 1]);
+                    t.points[t.points.Count - 1].minExecTime = CalMinExecTime(t.points[t.points.Count - 2], t.points[t.points.Count - 1]);
                     break;
                 case CPC_ENewWaypointMode.LastWaypoint:
                     if (t.points.Count > 0)
@@ -731,7 +740,7 @@ public class CPC_CameraPathInspector : Editor
                         t.points.Add(new CPC_Point(Vector3.zero, Quaternion.identity));
                         Debug.LogWarning("No previous waypoint found to place this waypoint, defaulting position to world center");
                     }
-                    t.points[t.points.Count - 1].startTime = CalMinExecTime(t.points[t.points.Count - 2], t.points[t.points.Count - 1]);
+                    t.points[t.points.Count - 1].minExecTime = CalMinExecTime(t.points[t.points.Count - 2], t.points[t.points.Count - 1]);
                     break;
                 case CPC_ENewWaypointMode.WaypointIndex:
                     if (t.points.Count > waypointIndex-1 && waypointIndex > 0)
@@ -741,7 +750,7 @@ public class CPC_CameraPathInspector : Editor
                         t.points.Add(new CPC_Point(Vector3.zero, Quaternion.identity));
                         Debug.LogWarning("Waypoint index "+waypointIndex+" does not exist, defaulting position to world center");
                     }
-                    t.points[t.points.Count - 1].startTime = CalMinExecTime(t.points[t.points.Count - 2], t.points[t.points.Count - 1]);
+                    t.points[t.points.Count - 1].minExecTime = CalMinExecTime(t.points[t.points.Count - 2], t.points[t.points.Count - 1]);
                     break;
                 case CPC_ENewWaypointMode.WorldCenter:
                     t.points.Add(new CPC_Point(Vector3.zero, Quaternion.identity));
@@ -966,22 +975,27 @@ public class CPC_CameraPathInspector : Editor
 
         if (showRawValues)
         {
-            foreach (var i in t.points)
+            for(int i=0; i < t.points.Count; i++)
             {
                 EditorGUI.BeginChangeCheck();
                 GUILayout.BeginVertical("Box");
-                Vector3 pos = EditorGUILayout.Vector3Field("Waypoint Position", i.position);
-                Quaternion rot = Quaternion.Euler(EditorGUILayout.Vector3Field("Waypoint Rotation", i.rotation.eulerAngles));
-                Vector3 posp = EditorGUILayout.Vector3Field("Previous Handle Offset", i.handleprev);
-                Vector3 posn = EditorGUILayout.Vector3Field("Next Handle Offset", i.handlenext);
+                Vector3 pos = EditorGUILayout.Vector3Field("Waypoint Position", t.points[i].position);
+                Quaternion rot = Quaternion.Euler(EditorGUILayout.Vector3Field("Waypoint Rotation", t.points[i].rotation.eulerAngles));
+                Vector3 posp = EditorGUILayout.Vector3Field("Previous Handle Offset", t.points[i].handleprev);
+                Vector3 posn = EditorGUILayout.Vector3Field("Next Handle Offset", t.points[i].handlenext);
                 GUILayout.EndVertical();
                 if (EditorGUI.EndChangeCheck())
                 {
                     Undo.RecordObject(t, "Changed waypoint transform");
-                    i.position = pos;
-                    i.rotation = rot;
-                    i.handleprev = posp;
-                    i.handlenext = posn;
+                    t.points[i].position = pos;
+                    t.points[i].rotation = rot;
+                    t.points[i].handleprev = posp;
+                    t.points[i].handlenext = posn;
+
+                    if (i > 0)
+                    {
+                        t.points[i].minExecTime = CalMinExecTime(t.points[i - 1], t.points[i]);
+                    }
                     SceneView.RepaintAll();
                 }
             }
