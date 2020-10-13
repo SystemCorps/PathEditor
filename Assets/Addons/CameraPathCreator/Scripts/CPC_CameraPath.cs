@@ -44,6 +44,7 @@ public class CPC_Point
     public float startTime;
     public float execTime;
     public float minExecTime;
+    public float finalSpeed;
 
     public CPC_Point(Vector3 pos, Quaternion rot)
     {
@@ -61,6 +62,7 @@ public class CPC_Point
         startTime = 0.0F;
         execTime = 0.0F;
         minExecTime = 0.0F;
+        finalSpeed = 0.0F;
     }
 }
 
@@ -290,18 +292,118 @@ public class CPC_CameraPath : MonoBehaviour
     }
 
 
-    Vector3 GetRobotPath(int pointIndex, float relTime, float step, float threshold, float maxAcc, float maxVel)
-    {
-        Vector3 currentPosition = points[pointIndex].position;
-        Vector3 nextPosition;
-        float absTime = relTime * points[pointIndex].execTime;
 
+    float CalInitAccTime(float maxAcc, float initVel, float Length, float execTime, float preMeanSpeed, float curMeanSpeed)
+    {
+        float Acc;
+        float sign;
+        if (curMeanSpeed > preMeanSpeed)
+        {
+            Acc = Mathf.Abs(maxAcc);
+            sign = -1.0F;
+        }
+        else
+        {
+            Acc = -Mathf.Abs(maxAcc);
+            sign = +1.0F;
+        }
+
+        float accTime;
+
+        accTime = (Acc * execTime + sign * Mathf.Sqrt(Acc * (Acc * Mathf.Pow(execTime, 2) + 2 * execTime * initVel - 2 * Length))) / Acc;
+
+        return accTime;
+
+    }
+
+
+
+
+    float CalLengthBtwWaypoint(int currentIndex)
+    {
+        // UnityEditor.Handles.DrawBezier(index.position, indexNext.position, index.position + index.handlenext, indexNext.position + indexNext.handleprev,((UnityEditor.Selection.activeGameObject == gameObject) ? visual.pathColor : visual.inactivePathColor), null, 5);
+        Vector3 startPosition = points[currentIndex].position;
+        Vector3 startTangent = points[currentIndex].position + points[currentIndex].handlenext;
+
+        int nextIndex = GetNextIndex(currentIndex);
+        Vector3 endPosition = points[nextIndex].position;
+        Vector3 endTangent = points[nextIndex].position + points[nextIndex].handleprev;
+
+        Vector3[] bezierPoints;
+        int division = 100;
+
+        bezierPoints = UnityEditor.Handles.MakeBezierPoints(startPosition, endPosition, startTangent, endTangent, division);
+
+        float length = 0;
+
+        for (int i = 1; i < bezierPoints.Length; i++)
+        {
+            Vector3 relPosition = bezierPoints[i] - bezierPoints[i - 1];
+            length = length + relPosition.sqrMagnitude;
+        }
+
+        return length;
+    }
+
+
+    RobotPath GetRobotPath(int pointIndex, float currentTime, float step, float threshold, float maxAcc, bool stopEnd)
+    {
+        // Should use x, z (plane)
+        RobotPath currentRPath;
+
+        Vector3 currentWaypointPosition = points[pointIndex].position;
+        Vector3 nextWaypointPosition = points[pointIndex].position;
+
+        float normTime;
+
+        float ai = maxAcc;
+        float vi;
+        float ti;
+        float vc;
+        float tc;
+        float T = points[pointIndex].execTime;
+
+        float length = CalLengthBtwWaypoint(pointIndex);
+        float preMeanSpeed;
+        float curMeanSpeed = length / T;
+
+        if (pointIndex == 0)
+        {
+            vi = 0;
+            preMeanSpeed = 0;
+        }
+        else
+        {
+            vi = points[pointIndex - 1].finalSpeed;
+            preMeanSpeed = CalLengthBtwWaypoint(pointIndex - 1) / points[pointIndex - 1].execTime;
+        }
+
+        ti = CalInitAccTime(ai, vi, length, T, preMeanSpeed, curMeanSpeed);
+
+        if (curMeanSpeed > preMeanSpeed)
+        {
+            vc = vi + ai * ti;
+        }
+        else
+        {
+            vc = vi - ai * ti;
+        }
+
+        tc = T - ti;
+        
+
+        
+
+        // initAccTime + constTime + finalAccTime = execTime
+        
 
         bool stop = false;
         while (!stop)
         {
 
         }
+
+        return currentRPath;
     }
 
     public void GenPath(float time, float rate)
@@ -356,6 +458,7 @@ public class CPC_CameraPath : MonoBehaviour
 
             if (!points[currentWaypointIndex].hold || holdDone)
             {
+                points[currentWaypointIndex].finalSpeed = speed;
                 ++currentWaypointIndex;
                 holdDone = false;
             }
