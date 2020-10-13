@@ -27,34 +27,6 @@ public enum CPC_EAfterLoop
 }
 
 [System.Serializable]
-
-
-public class TrajectoryInfo
-{
-    public float timeInit;
-    public float timeConst;
-    public float timeFinal;
-    public float travelInit;
-    public float travelConst;
-    public float travelFinal;
-    public float speedConst;
-    public float speedMean;
-    public float accInitSign;
-
-    public TrajectoryInfo(float ti, float tc, float tf, float trvi, float trvc, float trvf, float speedc, float speedm)
-    {
-        timeInit = ti;
-        timeConst = tc;
-        timeFinal = tf;
-        travelInit = trvi;
-        travelConst = trvc;
-        travelFinal = trvf;
-        speedConst = speedc;
-        speedMean = speedm;
-        accInitSign = 1.0F;
-    }
-}
-
 public class CPC_Point
 {
 
@@ -74,7 +46,16 @@ public class CPC_Point
     public float execTime;
     public float minExecTime;
     public float finalSpeed;
-    public TrajectoryInfo trajectoryInfo;
+
+    public float timeInit;
+    public float timeConst;
+    public float timeFinal;
+    public float travelInit;
+    public float travelConst;
+    public float travelFinal;
+    public float speedConst;
+    public float speedMean;
+    public float accInitSign;
 
     public CPC_Point(Vector3 pos, Quaternion rot)
     {
@@ -93,7 +74,16 @@ public class CPC_Point
         execTime = 0.0F;
         minExecTime = 0.0F;
         finalSpeed = 0.0F;
-        trajectoryInfo = new TrajectoryInfo(0.0F, 0.0F, 0.0F, 0.0F, 0.0F, 0.0F, 0.0F, 0.0F);
+
+        timeInit = 0.0F;
+        timeConst = 0.0F;
+        timeFinal = 0.0F;
+        travelInit = 0.0F;
+        travelConst = 0.0F;
+        travelFinal = 0.0F;
+        speedConst = 0.0F;
+        speedMean = 0.0F;
+        accInitSign = 1.0F;
     }
 }
 
@@ -330,8 +320,8 @@ public class CPC_CameraPath : MonoBehaviour
     void UpdateTrajectoryInfo(int index, float maxAcc)
     {
         float Length = CalLengthBtwWaypoint(index);
-        float execTime = points[index].execTime;
-        float curMeanSpeed = Length / execTime;
+        float execTime = 1.0F;
+        float curMeanSpeed = 0.0F;
         float preMeanSpeed = 0.0F;
         float Acc;
         float sign;
@@ -344,17 +334,23 @@ public class CPC_CameraPath : MonoBehaviour
         float travelConst;
         float travelFinal;
 
+        if (index < points.Count - 1)
+        {
+            execTime = points[index + 1].execTime;
+        }
+        curMeanSpeed = Length / execTime;
         if (index > 0)
         {
+            curMeanSpeed = Length / execTime;
             if (!points[index-1].hold)
             {
-                preMeanSpeed = points[index - 1].trajectoryInfo.speedMean;
-                initSpeed = points[index - 1].trajectoryInfo.speedConst;
+                preMeanSpeed = points[index - 1].speedMean;
+                initSpeed = points[index - 1].speedConst;
             }
         }
 
         
-        if (curMeanSpeed > preMeanSpeed)
+        if (curMeanSpeed >= preMeanSpeed)
         {
             Acc = Mathf.Abs(maxAcc);
             sign = -1.0F;
@@ -387,16 +383,16 @@ public class CPC_CameraPath : MonoBehaviour
             travelConst = speedConst * timeConst;
             travelFinal = maxAcc * (Mathf.Pow(timeFinal, 2) / 2);
 
-            points[index].trajectoryInfo.timeInit = timeInit;
-            points[index].trajectoryInfo.timeConst = timeConst;
-            points[index].trajectoryInfo.timeFinal = timeFinal;
-            points[index].trajectoryInfo.speedConst = speedConst;
-            points[index].trajectoryInfo.travelInit = travelInit;
-            points[index].trajectoryInfo.travelConst = travelConst;
-            points[index].trajectoryInfo.travelFinal = travelFinal;
+            points[index].timeInit = timeInit;
+            points[index].timeConst = timeConst;
+            points[index].timeFinal = timeFinal;
+            points[index].speedConst = speedConst;
+            points[index].travelInit = travelInit;
+            points[index].travelConst = travelConst;
+            points[index].travelFinal = travelFinal;
 
-            points[index].trajectoryInfo.speedMean = curMeanSpeed;
-            points[index].trajectoryInfo.accInitSign = -sign;
+            points[index].speedMean = curMeanSpeed;
+            points[index].accInitSign = -sign;
         }
         else
         {
@@ -407,14 +403,14 @@ public class CPC_CameraPath : MonoBehaviour
             travelInit = (initSpeed * timeInit) + Acc * (Mathf.Pow(timeInit, 2) / 2);
             travelConst = speedConst * timeConst;
 
-            points[index].trajectoryInfo.timeInit = timeInit;
-            points[index].trajectoryInfo.timeConst = timeConst;
-            points[index].trajectoryInfo.speedConst = speedConst;
-            points[index].trajectoryInfo.travelInit = travelInit;
-            points[index].trajectoryInfo.travelConst = travelConst;
+            points[index].timeInit = timeInit;
+            points[index].timeConst = timeConst;
+            points[index].speedConst = speedConst;
+            points[index].travelInit = travelInit;
+            points[index].travelConst = travelConst;
 
-            points[index].trajectoryInfo.speedMean = curMeanSpeed;
-            points[index].trajectoryInfo.accInitSign = -sign;
+            points[index].speedMean = curMeanSpeed;
+            points[index].accInitSign = -sign;
         }
     }
 
@@ -442,14 +438,14 @@ public class CPC_CameraPath : MonoBehaviour
         for (int i = 1; i < bezierPoints.Length; i++)
         {
             Vector3 relPosition = bezierPoints[i] - bezierPoints[i - 1];
-            length = length + relPosition.sqrMagnitude;
+            length = length + relPosition.magnitude;
         }
 
         return length;
     }
 
 
-    Tuple<float, Vector3, Quaternion, float, float, float> GetRobotPath(int index, float timeInWay, float step, float threshold, float maxAcc)
+    Tuple<float, Vector3, Quaternion, float, float, float> GetRobotPath(int index, float timeInWay, float step, float threshold, float maxAcc, float gain, float saturation)
     {
         // timeInWay should start from 1 step (ex. 0.05 sec) except very first (absolute time 0.0 sec)
         // Should use x, z (plane)
@@ -460,19 +456,22 @@ public class CPC_CameraPath : MonoBehaviour
         Vector3 nextWayPosPlane = nextWayPos;
         nextWayPosPlane.y = 0;
 
-        TrajectoryInfo curInfo = points[index].trajectoryInfo;
-        float timeInit = curInfo.timeInit;
-        float attenTimeConst = timeInit + curInfo.timeConst;
+        float timeInit = points[index].timeInit;
+        float attenTimeConst = timeInit + points[index].timeConst;
         float execTime = points[index].execTime;
         float totalTime = 0.0F;
 
         float targetDistDiff = 0.0F;
         float initSpeed = 0.0F;
-        float speedConst = curInfo.speedConst;
+        float speedConst = points[index].speedConst;
         float preTravel = 0.0F;
         float curTravel = 0.0F;
         float relTime = 0.0F;
-        float accInitSign = points[index - 1].trajectoryInfo.accInitSign;
+        float accInitSign = 1.0F;
+        if (index > 1)
+        {
+            accInitSign = points[index - 1].accInitSign;
+        }
 
         if (timeInWay > 0.05)
         {
@@ -482,7 +481,7 @@ public class CPC_CameraPath : MonoBehaviour
         {
             if (!points[index].hold)
             {
-                initSpeed = points[index - 1].trajectoryInfo.speedConst;
+                initSpeed = points[index - 1].speedConst;
             }
         }
         if (rpaths.Count > 0)
@@ -513,21 +512,27 @@ public class CPC_CameraPath : MonoBehaviour
         bool stop = false;
         float curDistDiff = 0.0F;
         float error = 0.0F;
-        float nextRelTime = relTime + 0.01F;
+        float nextRelTime = relTime + 0.00001F;
         Vector3 posRelTime;
         Vector3 posNextRelTime;
         Vector3 nextPos = GetBezierPosition(index, nextRelTime);
         Quaternion nextRot = GetLerpRotation(index, nextRelTime);
-        while (!stop)
+        int count = 0;
+        while (!stop && count < 100)
         {
-            posRelTime = GetBezierPosition(index, relTime);
+            posRelTime = GetBezierPosition(index, relTime) - curWayPosPlane;
             posRelTime.y = 0;
-            posNextRelTime = GetBezierPosition(index, nextRelTime);
-            nextPos = posNextRelTime;
+            nextPos = GetBezierPosition(index, nextRelTime);
+            posNextRelTime = nextPos - curWayPosPlane;
             nextRot = GetLerpRotation(index, nextRelTime);
             posNextRelTime.y = 0;
             curDistDiff = posNextRelTime.magnitude - posRelTime.magnitude;
             error = targetDistDiff - curDistDiff;
+
+            if (Mathf.Abs(error) > saturation)
+            {
+                error = saturation * (error / Mathf.Abs(error));
+            }
 
             if (error < threshold)
             {
@@ -535,8 +540,14 @@ public class CPC_CameraPath : MonoBehaviour
             }
             else
             {
-                nextRelTime = nextRelTime + error;
+                nextRelTime = nextRelTime + gain * error;
+                if (nextRelTime > 0.997F)
+                {
+                    nextRelTime = nextRelTime - 2* gain * error;
+                    gain *= 0.9F;
+                }
             }
+            count++;
         }
 
         float curSpeed = curDistDiff / step;
@@ -550,7 +561,7 @@ public class CPC_CameraPath : MonoBehaviour
     }
 
     
-    public void GenPath(float rate, float threshold, float maxAcc)
+    public void GenPath(float rate, float threshold, float maxAcc, float gain, float saturation)
     {
         rpaths = new List<RobotPath>();
         //int length = (int)(time / rate) + 1;
@@ -560,16 +571,22 @@ public class CPC_CameraPath : MonoBehaviour
         currentWaypointIndex = 0;
         bool holdDone = false;
         float currentTime = 0.0F;
+
+        for (int i=0; i < points.Count; i++)
+        {
+            UpdateTrajectoryInfo(i, maxAcc);
+        }
+
         //RobotPath temp = new RobotPath(currentTime, tpos, trot, 0.0F, 0.0F);
 
         while (currentWaypointIndex < points.Count)
         {
-            while (currentTimeInWaypoint < 1)
+            float timeInWay = 0.0F;
+            while (timeInWay < points[currentWaypointIndex+1].execTime)
             {
-                float timeInWay = 0.0F;
                 if (!points[currentWaypointIndex].hold || holdDone)
                 {
-                    var result = GetRobotPath(currentWaypointIndex, timeInWay, step, threshold, maxAcc);
+                    var result = GetRobotPath(currentWaypointIndex, timeInWay, step, threshold, maxAcc, gain, saturation);
                     RobotPath temp = new RobotPath(result.Item1, result.Item2, result.Item3, result.Item4, result.Item5);
                     temp.relTimeInWay = result.Item6;
                     rpaths.Add(temp);
@@ -580,7 +597,7 @@ public class CPC_CameraPath : MonoBehaviour
                 }
                 else
                 {
-                    var result = GetRobotPath(currentWaypointIndex, timeInWay, step, threshold, maxAcc);
+                    var result = GetRobotPath(currentWaypointIndex, timeInWay, step, threshold, maxAcc, gain, saturation);
                     RobotPath temp = new RobotPath(result.Item1, result.Item2, result.Item3, result.Item4, result.Item5);
                     temp.relTimeInWay = result.Item6;
                     rpaths.Add(temp);
@@ -589,7 +606,7 @@ public class CPC_CameraPath : MonoBehaviour
                     //position = GetBezierPosition(currentWaypointIndex, 0.0F);
                     //rotation = GetLerpRotation(currentWaypointIndex, 0.0F);
                 }
-
+                timeInWay += step;
                 //RobotPath temp = new RobotPath(, position, rotation, speed, travelRange);
                 //rpaths.Add(temp);
                 //currentTime += step;

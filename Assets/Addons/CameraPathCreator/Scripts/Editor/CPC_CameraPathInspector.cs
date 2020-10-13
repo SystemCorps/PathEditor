@@ -79,7 +79,9 @@ public class CPC_CameraPathInspector : Editor
     float robotCtrlRate = 20.0F;
     float robotMaxAcc = 0.5F;
     float robotAccTime = 1.0F;
-    float threshold = 0.01F;
+    float threshold = 0.00001F;
+    float gain = 0.1F;
+    float saturation = 0.0001F;
 
     bool canSave = false;
     // Robot related
@@ -139,7 +141,7 @@ public class CPC_CameraPathInspector : Editor
         {
 
             //t.GenPath(playOnAwakeTimeProperty.floatValue, robotCtrlRate);
-            //t.GenPath(robotCtrlRate, threshold, robotMaxAcc);
+            t.GenPath(robotCtrlRate, threshold, robotMaxAcc, gain, saturation);
             canSave = true;
         }
 
@@ -734,7 +736,10 @@ public class CPC_CameraPathInspector : Editor
                     CPC_Point temp = new CPC_Point(SceneView.lastActiveSceneView.camera.transform.position, SceneView.lastActiveSceneView.camera.transform.rotation);
                     if (temp.position.y > robotMaxHeight) temp.position.y = robotMaxHeight;
                     t.points.Add(temp);
-                    t.points[t.points.Count - 1].minExecTime = CalMinExecTime(t.points[t.points.Count - 2], t.points[t.points.Count - 1]);
+                    if (t.points.Count > 1)
+                    {
+                        t.points[t.points.Count - 1].minExecTime = CalMinExecTime(t.points[t.points.Count - 2], t.points[t.points.Count - 1]);
+                    }
                     break;
                 case CPC_ENewWaypointMode.LastWaypoint:
                     if (t.points.Count > 0)
