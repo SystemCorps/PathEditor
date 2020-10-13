@@ -38,7 +38,7 @@ RenderSettings:
   m_ReflectionIntensity: 1
   m_CustomReflection: {fileID: 0}
   m_Sun: {fileID: 0}
-  m_IndirectSpecularColor: {r: 0.4465791, g: 0.49641317, b: 0.57481784, a: 1}
+  m_IndirectSpecularColor: {r: 0.4465785, g: 0.49641228, b: 0.57481676, a: 1}
   m_UseRadianceAmbientProbe: 0
 --- !u!157 &3
 LightmapSettings:
@@ -617,10 +617,10 @@ MonoBehaviour:
   playOnAwake: 0
   playOnAwakeTime: 10
   points:
-  - position: {x: 8.6, y: 1.3142357, z: 3.201229}
-    rotation: {x: -0.0026719894, y: 0.99602115, z: -0.0826727, w: -0.033164784}
-    handleprev: {x: 1.2682676, y: -0.043557167, z: -0.50145483}
-    handlenext: {x: -1.2682676, y: 0.043557167, z: 0.50145483}
+  - position: {x: 8.115216, y: 1.3212, z: 9.107983}
+    rotation: {x: 0.031146614, y: -0.9275151, z: 0.36383495, w: 0.07981092}
+    handleprev: {x: 0, y: 0, z: -1}
+    handlenext: {x: 0, y: 0, z: 1}
     curveTypeRotation: 0
     rotationCurve:
       serializedVersion: 2
@@ -673,74 +673,15 @@ MonoBehaviour:
       m_RotationOrder: 4
     chained: 1
     hold: 0
-    holdTime: 10
+    holdTime: 0
     startTime: 0
     execTime: 0
     minExecTime: 0
-  - position: {x: 5.1, y: 1.3144913, z: 3.5475388}
-    rotation: {x: 0.0030268815, y: 0.9946335, z: -0.09910116, w: 0.02956283}
-    handleprev: {x: 1.2380018, y: 0.08749938, z: 0.04608369}
-    handlenext: {x: -1.2380018, y: -0.08749938, z: -0.04608369}
-    curveTypeRotation: 0
-    rotationCurve:
-      serializedVersion: 2
-      m_Curve:
-      - serializedVersion: 3
-        time: 0
-        value: 0
-        inSlope: 0
-        outSlope: 0
-        tangentMode: 0
-        weightedMode: 0
-        inWeight: 0
-        outWeight: 0
-      - serializedVersion: 3
-        time: 1
-        value: 1
-        inSlope: 0
-        outSlope: 0
-        tangentMode: 0
-        weightedMode: 0
-        inWeight: 0
-        outWeight: 0
-      m_PreInfinity: 2
-      m_PostInfinity: 2
-      m_RotationOrder: 4
-    curveTypePosition: 1
-    positionCurve:
-      serializedVersion: 2
-      m_Curve:
-      - serializedVersion: 3
-        time: 0
-        value: 0
-        inSlope: 0
-        outSlope: 1
-        tangentMode: 0
-        weightedMode: 0
-        inWeight: 0
-        outWeight: 0
-      - serializedVersion: 3
-        time: 1
-        value: 1
-        inSlope: 1
-        outSlope: 0
-        tangentMode: 0
-        weightedMode: 0
-        inWeight: 0
-        outWeight: 0
-      m_PreInfinity: 2
-      m_PostInfinity: 2
-      m_RotationOrder: 4
-    chained: 1
-    hold: 0
-    holdTime: 5
-    startTime: 1.0851538
-    execTime: 1.0851538
-    minExecTime: 1.0851538
-  - position: {x: 1.21, y: 1.3149786, z: 3.2747078}
-    rotation: {x: 0.005485242, y: 0.9930229, z: -0.1064664, w: 0.05040233}
-    handleprev: {x: 1.015948, y: 0.07601094, z: 0.028834105}
-    handlenext: {x: -1.015948, y: -0.07601094, z: -0.028834105}
+    finalSpeed: 0
+  - position: {x: 8.115216, y: 1.3212, z: 9.107983}
+    rotation: {x: 0.031146614, y: -0.9275151, z: 0.36383495, w: 0.07981092}
+    handleprev: {x: 0, y: 0, z: -1}
+    handlenext: {x: 0, y: 0, z: 1}
     curveTypeRotation: 0
     rotationCurve:
       serializedVersion: 2
@@ -794,13 +735,14 @@ MonoBehaviour:
     chained: 1
     hold: 0
     holdTime: 0
-    startTime: 2.1861079
-    execTime: 1.100954
-    minExecTime: 1.100954
-  - position: {x: -1.5, y: 1.3212, z: 4.689434}
-    rotation: {x: 0.027743181, y: 0.9707453, z: -0.1380812, w: 0.19446684}
-    handleprev: {x: 1.0827574, y: 0.10046661, z: -0.009056091}
-    handlenext: {x: -1.0827574, y: -0.10046661, z: 0.009056091}
+    startTime: 0
+    execTime: 0
+    minExecTime: 0
+    finalSpeed: 0
+  - position: {x: 8.115216, y: 1.3212, z: 9.107983}
+    rotation: {x: 0.031146614, y: -0.9275151, z: 0.36383495, w: 0.07981092}
+    handleprev: {x: 0, y: 0, z: -1}
+    handlenext: {x: 0, y: 0, z: 1}
     curveTypeRotation: 0
     rotationCurve:
       serializedVersion: 2
@@ -854,69 +796,10 @@ MonoBehaviour:
     chained: 1
     hold: 0
     holdTime: 0
-    startTime: 3.2522395
-    execTime: 1.0661316
-    minExecTime: 1.0661316
-  - position: {x: -3.8, y: 1.3212, z: 3.4510956}
-    rotation: {x: 0.034996737, y: 0.96038973, z: -0.1410167, w: 0.23778379}
-    handleprev: {x: 0.8109009, y: 0.18325412, z: 0.7187319}
-    handlenext: {x: -0.8109009, y: -0.18325412, z: -0.7187319}
-    curveTypeRotation: 0
-    rotationCurve:
-      serializedVersion: 2
-      m_Curve:
-      - serializedVersion: 3
-        time: 0
-        value: 0
-        inSlope: 0
-        outSlope: 0
-        tangentMode: 0
-        weightedMode: 0
-        inWeight: 0
-        outWeight: 0
-      - serializedVersion: 3
-        time: 1
-        value: 1
-        inSlope: 0
-        outSlope: 0
-        tangentMode: 0
-        weightedMode: 0
-        inWeight: 0
-        outWeight: 0
-      m_PreInfinity: 2
-      m_PostInfinity: 2
-      m_RotationOrder: 4
-    curveTypePosition: 1
-    positionCurve:
-      serializedVersion: 2
-      m_Curve:
-      - serializedVersion: 3
-        time: 0
-        value: 0
-        inSlope: 0
-        outSlope: 1
-        tangentMode: 0
-        weightedMode: 0
-        inWeight: 0
-        outWeight: 0
-      - serializedVersion: 3
-        time: 1
-        value: 1
-        inSlope: 1
-        outSlope: 0
-        tangentMode: 0
-        weightedMode: 0
-        inWeight: 0
-        outWeight: 0
-      m_PreInfinity: 2
-      m_PostInfinity: 2
-      m_RotationOrder: 4
-    chained: 1
-    hold: 0
-    holdTime: 0
-    startTime: 4.306445
-    execTime: 1.0542057
-    minExecTime: 1.0497098
+    startTime: 1.012115
+    execTime: 1.012115
+    minExecTime: 1.012115
+    finalSpeed: 0
   visual:
     pathColor: {r: 0, g: 1, b: 0, a: 1}
     inactivePathColor: {r: 0.5, g: 0.5, b: 0.5, a: 1}

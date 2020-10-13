@@ -84,6 +84,33 @@ public class RobotPath
     }
 }
 
+public class TrajectoryInfo
+{
+    public float timeInit;
+    public float timeConst;
+    public float timeFinal;
+    public float travelInit;
+    public float travelConst;
+    public float travelFinal;
+    public float speedConst;
+    public float speedMean;
+    public float accInitSign;
+
+    public TrajectoryInfo(float ti, float tc, float tf, float trvi, float trvc, float trvf, float speedc, float speedm)
+    {
+        timeInit = ti;
+        timeConst = tc;
+        timeFinal = tf;
+        travelInit = trvi;
+        travelConst = trvc;
+        travelFinal = trvf;
+        speedConst = speedc;
+        speedMean = speedm;
+        accInitSign = 1.0F;
+    }
+}
+
+
 public class CPC_CameraPath : MonoBehaviour
 {
 
