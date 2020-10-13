@@ -346,65 +346,6 @@ public class CPC_CameraPath : MonoBehaviour
     }
 
 
-    RobotPath GetRobotPath(int pointIndex, float currentTime, float step, float threshold, float maxAcc, bool stopEnd)
-    {
-        // Should use x, z (plane)
-        RobotPath currentRPath;
-
-        Vector3 currentWaypointPosition = points[pointIndex].position;
-        Vector3 nextWaypointPosition = points[pointIndex].position;
-
-        float normTime;
-
-        float ai = maxAcc;
-        float vi;
-        float ti;
-        float vc;
-        float tc;
-        float T = points[pointIndex].execTime;
-
-        float length = CalLengthBtwWaypoint(pointIndex);
-        float preMeanSpeed;
-        float curMeanSpeed = length / T;
-
-        if (pointIndex == 0)
-        {
-            vi = 0;
-            preMeanSpeed = 0;
-        }
-        else
-        {
-            vi = points[pointIndex - 1].finalSpeed;
-            preMeanSpeed = CalLengthBtwWaypoint(pointIndex - 1) / points[pointIndex - 1].execTime;
-        }
-
-        ti = CalInitAccTime(ai, vi, length, T, preMeanSpeed, curMeanSpeed);
-
-        if (curMeanSpeed > preMeanSpeed)
-        {
-            vc = vi + ai * ti;
-        }
-        else
-        {
-            vc = vi - ai * ti;
-        }
-
-        tc = T - ti;
-        
-
-        
-
-        // initAccTime + constTime + finalAccTime = execTime
-        
-
-        bool stop = false;
-        while (!stop)
-        {
-
-        }
-
-        return currentRPath;
-    }
 
     public void GenPath(float time, float rate)
     {
