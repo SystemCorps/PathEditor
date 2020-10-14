@@ -80,7 +80,7 @@ public class CPC_CameraPathInspector : Editor
     float robotMaxAcc = 0.5F;
     float robotAccTime = 1.0F;
     float threshold = 0.00001F;
-    float gain = 0.1F;
+    float gain = 0.01F;
     float saturation = 0.0001F;
 
     bool canSave = false;
@@ -141,7 +141,7 @@ public class CPC_CameraPathInspector : Editor
         {
 
             //t.GenPath(playOnAwakeTimeProperty.floatValue, robotCtrlRate);
-            t.GenPath(robotCtrlRate, threshold, robotMaxAcc, gain, saturation);
+            t.GenPath(robotCtrlRate, threshold, robotMaxAcc, robotMaxSpeed, gain, saturation);
             canSave = true;
         }
 
@@ -569,13 +569,14 @@ public class CPC_CameraPathInspector : Editor
         GUI.enabled = true;
         EditorGUI.BeginChangeCheck();
         GUILayout.Label("Time (seconds)");
-        time = EditorGUILayout.FloatField("", time, GUILayout.MinWidth(5), GUILayout.MaxWidth(50));
+        //time = EditorGUILayout.FloatField("", time, GUILayout.MinWidth(5), GUILayout.MaxWidth(50));
+        /*
         if (EditorGUI.EndChangeCheck())
         {
             time = Mathf.Clamp(time, 0.001f, Mathf.Infinity);
             t.UpdateTimeInSeconds(time);
             PlayerPrefs.SetFloat("CPC_time", time);
-        }
+        }*/
         GUILayout.EndHorizontal();
         GUI.enabled = Application.isPlaying;
         EditorGUI.BeginChangeCheck();

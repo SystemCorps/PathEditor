@@ -95,6 +95,7 @@ public class RobotPath
     public float mobileSpeed;
     public float travelRange;
     public float relTimeInWay;
+    public float currentAcc;
 
     public RobotPath(float t, Vector3 pos, Quaternion rot, float spd, float travel)
     {
@@ -104,6 +105,7 @@ public class RobotPath
         mobileSpeed = spd;
         travelRange = travel;
         relTimeInWay = 0.0F;
+        currentAcc = 0.0F;
     }
 }
 
@@ -445,7 +447,7 @@ public class CPC_CameraPath : MonoBehaviour
     }
 
 
-    Tuple<float, Vector3, Quaternion, float, float, float> GetRobotPath(int index, float timeInWay, float step, float threshold, float maxAcc, float gain, float saturation)
+    Tuple<float, Vector3, Quaternion, float, float, float, float> GetRobotPath(int index, float timeInWay, float step, float threshold, float maxAcc, float maxSpeed, float gain, float saturation)
     {
         // timeInWay should start from 1 step (ex. 0.05 sec) except very first (absolute time 0.0 sec)
         // Should use x, z (plane)
@@ -509,16 +511,21 @@ public class CPC_CameraPath : MonoBehaviour
         }
 
 
+        relTime = timeInWay / execTime;
         bool stop = false;
         float curDistDiff = 0.0F;
         float error = 0.0F;
-        float nextRelTime = relTime + 0.00001F;
+        float nextRelTime = relTime;
         Vector3 posRelTime;
         Vector3 posNextRelTime;
         Vector3 nextPos = GetBezierPosition(index, nextRelTime);
         Quaternion nextRot = GetLerpRotation(index, nextRelTime);
+
+        float tempSpeed = 0.0F;
+        float tempAcc = 0.0F;
+        
         int count = 0;
-        while (!stop && count < 100)
+        while (!stop && count < 1000)
         {
             posRelTime = GetBezierPosition(index, relTime) - curWayPosPlane;
             posRelTime.y = 0;
@@ -527,7 +534,20 @@ public class CPC_CameraPath : MonoBehaviour
             nextRot = GetLerpRotation(index, nextRelTime);
             posNextRelTime.y = 0;
             curDistDiff = posNextRelTime.magnitude - posRelTime.magnitude;
+            //curDistDiff = (posNextRelTime - posRelTime).magnitude;
             error = targetDistDiff - curDistDiff;
+
+            tempSpeed = (posNextRelTime - posRelTime).magnitude / step;
+            if (rpaths.Count > 1)
+            {
+                tempAcc = (tempSpeed - rpaths[rpaths.Count - 1].mobileSpeed) / step;
+            }
+
+            if (tempSpeed > maxSpeed || tempAcc > maxAcc)
+            {
+                gain *= 0.01F;
+            }
+            
 
             if (Mathf.Abs(error) > saturation)
             {
@@ -550,18 +570,18 @@ public class CPC_CameraPath : MonoBehaviour
             count++;
         }
 
-        float curSpeed = curDistDiff / step;
+        float curSpeed = tempSpeed;
         curTravel = preTravel + curDistDiff;
         totalTime = totalTime + step;
         //RobotPath currentPath = new RobotPath(totalTime, nextPos, nextRot, curSpeed, curTravel);
         //currentPath.relTimeInWay = nextRelTime;
 
         //return currentPath;
-        return new Tuple<float, Vector3, Quaternion, float, float, float>(totalTime, nextPos, nextRot, curSpeed, curTravel, nextRelTime);
+        return new Tuple<float, Vector3, Quaternion, float, float, float, float>(totalTime, nextPos, nextRot, curSpeed, curTravel, nextRelTime, tempAcc);
     }
 
     
-    public void GenPath(float rate, float threshold, float maxAcc, float gain, float saturation)
+    public void GenPath(float rate, float threshold, float maxAcc, float maxSpeed, float gain, float saturation)
     {
         rpaths = new List<RobotPath>();
         //int length = (int)(time / rate) + 1;
@@ -586,9 +606,10 @@ public class CPC_CameraPath : MonoBehaviour
             {
                 if (!points[currentWaypointIndex].hold || holdDone)
                 {
-                    var result = GetRobotPath(currentWaypointIndex, timeInWay, step, threshold, maxAcc, gain, saturation);
+                    var result = GetRobotPath(currentWaypointIndex, timeInWay, step, threshold, maxAcc, maxSpeed, gain, saturation);
                     RobotPath temp = new RobotPath(result.Item1, result.Item2, result.Item3, result.Item4, result.Item5);
                     temp.relTimeInWay = result.Item6;
+                    temp.currentAcc = result.Item7;
                     rpaths.Add(temp);
                     currentTime += step;
                     //currentTimeInWaypoint += step / points[currentWaypointIndex].execTime;
@@ -597,9 +618,10 @@ public class CPC_CameraPath : MonoBehaviour
                 }
                 else
                 {
-                    var result = GetRobotPath(currentWaypointIndex, timeInWay, step, threshold, maxAcc, gain, saturation);
+                    var result = GetRobotPath(currentWaypointIndex, 0.0F, step, threshold, maxAcc, maxSpeed, gain, saturation);
                     RobotPath temp = new RobotPath(result.Item1, result.Item2, result.Item3, result.Item4, result.Item5);
                     temp.relTimeInWay = result.Item6;
+                    temp.currentAcc = result.Item7;
                     rpaths.Add(temp);
                     currentTime += step;
                     //currentTimeInWaypoint += step / points[currentWaypointIndex].holdTime;
@@ -642,7 +664,7 @@ public class CPC_CameraPath : MonoBehaviour
                 {
                     if (!points[currentWaypointIndex].hold || holdDone)
                     {
-                        currentTimeInWaypoint += Time.deltaTime / timePerSegment;
+                        currentTimeInWaypoint += Time.deltaTime / points[currentWaypointIndex+1].execTime;
                         selectedCamera.transform.position = GetBezierPosition(currentWaypointIndex, currentTimeInWaypoint);
                         
                         if (!lookAtTarget)
@@ -682,6 +704,8 @@ public class CPC_CameraPath : MonoBehaviour
             return 0;
         return index + 1;
     }
+
+
 
     Vector3 GetBezierPosition(int pointIndex, float time)
     {
