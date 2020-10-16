@@ -315,6 +315,12 @@ public class CPC_CameraPath : MonoBehaviour
         float delta = 0.0F;
         float expIn = 0.0F;
         float relTimeIn = 0.0F;
+        float preRelTimeIn = 0.0F;
+
+        Vector3 PosOffset = new Vector3(0.0F, 0.0F, 0.0F);
+        Quaternion RotOffset = Quaternion.identity;
+        int preIndex = 0;
+        //bool preUpdatedHold = false;
 
         while (currentWaypointIndex < points.Count)
         {
@@ -328,6 +334,8 @@ public class CPC_CameraPath : MonoBehaviour
             float sigma = 0.3F;
             float mu = 0.0F;
             relTimeIn = 0.0F;
+            
+            
 
             while (relTime < 1.0F)
             {
@@ -335,7 +343,7 @@ public class CPC_CameraPath : MonoBehaviour
                 relTime += step / points[currentWaypointIndex + 1].execTime;
             }
 
-            while (currentTimeInWaypoint < 1)
+            while (currentTimeInWaypoint <= 1)
             {
                 if (!points[currentWaypointIndex].hold || holdDone)
                 {
@@ -343,19 +351,42 @@ public class CPC_CameraPath : MonoBehaviour
                     //currentTimeInWaypoint += (Mathf.PI/2) * Mathf.Sin((step / points[currentWaypointIndex + 1].execTime) * Mathf.PI);
                     //expIn = - Mathf.Pow((2 * currentTimeInWaypoint - 1) / deltaAppAlpha, 2);
                     //delta = Mathf.Exp(expIn) / (deltaAppAlpha * Mathf.Sqrt(Mathf.PI));
+                    if (currentWaypointIndex != preIndex)
+                    {
+                        Vector3 prePos = rpaths[rpaths.Count - 1].position;
+                        Quaternion preRot = rpaths[rpaths.Count - 1].rotation;
+                        PosOffset = prePos - GetBezierPosition(currentWaypointIndex, 0.0F);
+                        RotOffset = preRot * Quaternion.Inverse(GetLerpRotation(currentWaypointIndex, 0.0F));
+                        preIndex = currentWaypointIndex;
+                        //preRelTimeIn = 0.0F;
+                    }
 
                     relTimeIn += Gaussian(currentTimeInWaypoint, mu, sigma) / factor;
-                    position = GetBezierPosition(currentWaypointIndex, relTimeIn);
-                    rotation = GetLerpRotation(currentWaypointIndex, relTimeIn);
+                    position = GetBezierPosition(currentWaypointIndex, relTimeIn) + PosOffset;
+                    rotation = GetLerpRotation(currentWaypointIndex, relTimeIn) * RotOffset;
                     //position = GetBezierPosition(currentWaypointIndex, currentTimeInWaypoint);
                     //rotation = GetLerpRotation(currentWaypointIndex, currentTimeInWaypoint);
                     currentTimeInWaypoint += step / points[currentWaypointIndex + 1].execTime;
+                    //preRelTimeIn = relTimeIn;
                 }
                 else
                 {
+                    if (currentWaypointIndex != preIndex)
+                    {
+                        Vector3 prePos = rpaths[rpaths.Count - 1].position;
+                        Quaternion preRot = rpaths[rpaths.Count - 1].rotation;
+                        PosOffset = prePos - GetBezierPosition(currentWaypointIndex, 0.0F);
+                        RotOffset = preRot * Quaternion.Inverse(GetLerpRotation(currentWaypointIndex, 0.0F));
+                        //PosOffset = GetBezierPosition(preIndex, preRelTimeIn) - GetBezierPosition(currentWaypointIndex, 0.0F);
+                        //RotOffset = GetLerpRotation(preIndex, preRelTimeIn) * Quaternion.Inverse(GetLerpRotation(currentWaypointIndex, 0.0F));
+                        preIndex = currentWaypointIndex;
+                        //preUpdatedHold = true;
+                    }
+
+                    relTimeIn += Gaussian(currentTimeInWaypoint, mu, sigma) / factor;
+                    position = GetBezierPosition(currentWaypointIndex, 0.0F) + PosOffset;
+                    rotation = GetLerpRotation(currentWaypointIndex, 0.0F) * RotOffset;
                     currentTimeInWaypoint += step / points[currentWaypointIndex].holdTime;
-                    position = GetBezierPosition(currentWaypointIndex, 0.0F);
-                    rotation = GetLerpRotation(currentWaypointIndex, 0.0F);
                 }
 
                 if (rpaths.Count > 0)
@@ -379,7 +410,11 @@ public class CPC_CameraPath : MonoBehaviour
                 ++currentWaypointIndex;
                 holdDone = false;
             }
-            else holdDone = true;
+            else
+            {
+                holdDone = true;
+                //preUpdatedHold = false;
+            }
 
             if (currentWaypointIndex == points.Count - 1 && !looped) break;
             if (currentWaypointIndex == points.Count && afterLoop == CPC_EAfterLoop.Continue) currentWaypointIndex = 0;
