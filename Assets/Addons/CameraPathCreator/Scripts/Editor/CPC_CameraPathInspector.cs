@@ -74,14 +74,12 @@ public class CPC_CameraPathInspector : Editor
 
     private bool hasScrollBar = false;
 
-    float robotMaxSpeed = 1.0F;
+    float robotMaxSpeed = 1.5F;
     float robotMaxHeight = 0.8602F + 0.461F;
     float robotCtrlRate = 20.0F;
     float robotMaxAcc = 0.5F;
     float robotAccTime = 1.0F;
-    float threshold = 0.00001F;
-    float gain = 0.01F;
-    float saturation = 0.0001F;
+    float deltaAppAlpha = 100F;
 
     bool canSave = false;
     // Robot related
@@ -127,9 +125,6 @@ public class CPC_CameraPathInspector : Editor
 
         float constTime = constLength / robotMaxSpeed;
         float totalTime = constTime + 2 * robotAccTime + 0.5F;
-        double temp = (double)totalTime;
-        temp = Math.Round(temp, 3);
-        totalTime = (float)temp;
 
         return totalTime;
     }
@@ -141,7 +136,7 @@ public class CPC_CameraPathInspector : Editor
         {
 
             //t.GenPath(playOnAwakeTimeProperty.floatValue, robotCtrlRate);
-            t.GenPath(robotCtrlRate, threshold, robotMaxAcc, robotMaxSpeed, gain, saturation);
+            t.GenPath(time, robotCtrlRate, deltaAppAlpha);
             canSave = true;
         }
 

@@ -1,5 +1,4 @@
-﻿using System;
-using System.Collections;
+﻿using System.Collections;
 using System.Collections.Generic;
 using System.IO;
 using UnityEngine;
@@ -45,17 +44,6 @@ public class CPC_Point
     public float startTime;
     public float execTime;
     public float minExecTime;
-    public float finalSpeed;
-
-    public float timeInit;
-    public float timeConst;
-    public float timeFinal;
-    public float travelInit;
-    public float travelConst;
-    public float travelFinal;
-    public float speedConst;
-    public float speedMean;
-    public float accInitSign;
 
     public CPC_Point(Vector3 pos, Quaternion rot)
     {
@@ -73,17 +61,6 @@ public class CPC_Point
         startTime = 0.0F;
         execTime = 0.0F;
         minExecTime = 0.0F;
-        finalSpeed = 0.0F;
-
-        timeInit = 0.0F;
-        timeConst = 0.0F;
-        timeFinal = 0.0F;
-        travelInit = 0.0F;
-        travelConst = 0.0F;
-        travelFinal = 0.0F;
-        speedConst = 0.0F;
-        speedMean = 0.0F;
-        accInitSign = 1.0F;
     }
 }
 
@@ -94,8 +71,6 @@ public class RobotPath
     public float time;
     public float mobileSpeed;
     public float travelRange;
-    public float relTimeInWay;
-    public float currentAcc;
 
     public RobotPath(float t, Vector3 pos, Quaternion rot, float spd, float travel)
     {
@@ -104,8 +79,6 @@ public class RobotPath
         rotation = rot;
         mobileSpeed = spd;
         travelRange = travel;
-        relTimeInWay = 0.0F;
-        currentAcc = 0.0F;
     }
 }
 
@@ -134,9 +107,8 @@ public class CPC_CameraPath : MonoBehaviour
 
     // Robot Path
     public List<RobotPath> rpaths = new List<RobotPath>();
-    //public List<float> execTime = new List<float>();
+    public List<float> execTime = new List<float>();
     public string rpathStr;
-    //public RobotPath temp;
 
 
     void Start ()
@@ -317,321 +289,89 @@ public class CPC_CameraPath : MonoBehaviour
         File.WriteAllText(directory, rpathStr);
     }
 
-
-
-    void UpdateTrajectoryInfo(int index, float maxAcc)
+    public float Gaussian(float x, float mu, float sigma)
     {
-        float Length = CalLengthBtwWaypoint(index);
-        float execTime = 1.0F;
-        float curMeanSpeed = 0.0F;
-        float preMeanSpeed = 0.0F;
-        float Acc;
-        float sign;
-        float initSpeed = 0.0F;
-        float timeInit;
-        float timeConst;
-        float timeFinal;
-        float speedConst;
-        float travelInit;
-        float travelConst;
-        float travelFinal;
+        float expIn = (2 * x - 1 - mu) / sigma;
+        expIn = -expIn * expIn / 2;
 
-        if (index < points.Count - 1)
-        {
-            execTime = points[index + 1].execTime;
-        }
-        curMeanSpeed = Length / execTime;
-        if (index > 0)
-        {
-            curMeanSpeed = Length / execTime;
-            if (!points[index-1].hold)
-            {
-                preMeanSpeed = points[index - 1].speedMean;
-                initSpeed = points[index - 1].speedConst;
-            }
-        }
+        float norm = Mathf.Exp(expIn) / (sigma * Mathf.Sqrt(2 * Mathf.PI));
 
-        
-        if (curMeanSpeed >= preMeanSpeed)
-        {
-            Acc = Mathf.Abs(maxAcc);
-            sign = -1.0F;
-        }
-        else
-        {
-            Acc = -Mathf.Abs(maxAcc);
-            sign = +1.0F;
-        }
-
-        if ((index == points.Count-1) || points[index+1].hold)
-        {
-            if (curMeanSpeed > preMeanSpeed)
-            {
-                float term1 = (maxAcc * execTime - initSpeed) / (2 * maxAcc);
-                float term2 = Mathf.Sqrt(Mathf.Pow(maxAcc * execTime, 2) + 2 * maxAcc * initSpeed * execTime - 4 * Length * maxAcc - Mathf.Pow(initSpeed, 2)) / (2 * maxAcc);
-                timeInit = term1 - term2;
-                
-            }
-            else
-            {
-                timeInit = (2 * maxAcc * initSpeed * execTime - 2 * Length * maxAcc - Mathf.Pow(initSpeed, 2)) / (2 * maxAcc * (maxAcc * execTime - initSpeed));
-            }
-
-            speedConst = initSpeed + (Acc * timeInit);
-            timeFinal = speedConst / maxAcc;
-            timeConst = execTime - timeInit - timeFinal;
-
-            travelInit = (initSpeed * timeInit) + Acc * (Mathf.Pow(timeInit, 2) / 2);
-            travelConst = speedConst * timeConst;
-            travelFinal = maxAcc * (Mathf.Pow(timeFinal, 2) / 2);
-
-            points[index].timeInit = timeInit;
-            points[index].timeConst = timeConst;
-            points[index].timeFinal = timeFinal;
-            points[index].speedConst = speedConst;
-            points[index].travelInit = travelInit;
-            points[index].travelConst = travelConst;
-            points[index].travelFinal = travelFinal;
-
-            points[index].speedMean = curMeanSpeed;
-            points[index].accInitSign = -sign;
-        }
-        else
-        {
-            timeInit = (Acc * execTime + sign * Mathf.Sqrt(Acc * (Acc * Mathf.Pow(execTime, 2) + 2 * execTime * initSpeed - 2 * Length))) / Acc;
-            timeConst = execTime - timeInit;
-            speedConst = initSpeed + (Acc * timeInit);
-
-            travelInit = (initSpeed * timeInit) + Acc * (Mathf.Pow(timeInit, 2) / 2);
-            travelConst = speedConst * timeConst;
-
-            points[index].timeInit = timeInit;
-            points[index].timeConst = timeConst;
-            points[index].speedConst = speedConst;
-            points[index].travelInit = travelInit;
-            points[index].travelConst = travelConst;
-
-            points[index].speedMean = curMeanSpeed;
-            points[index].accInitSign = -sign;
-        }
+        return norm;
     }
 
 
-
-
-
-    float CalLengthBtwWaypoint(int currentIndex)
-    {
-        // UnityEditor.Handles.DrawBezier(index.position, indexNext.position, index.position + index.handlenext, indexNext.position + indexNext.handleprev,((UnityEditor.Selection.activeGameObject == gameObject) ? visual.pathColor : visual.inactivePathColor), null, 5);
-        Vector3 startPosition = points[currentIndex].position;
-        Vector3 startTangent = points[currentIndex].position + points[currentIndex].handlenext;
-
-        int nextIndex = GetNextIndex(currentIndex);
-        Vector3 endPosition = points[nextIndex].position;
-        Vector3 endTangent = points[nextIndex].position + points[nextIndex].handleprev;
-
-        Vector3[] bezierPoints;
-        int division = 100;
-
-        bezierPoints = UnityEditor.Handles.MakeBezierPoints(startPosition, endPosition, startTangent, endTangent, division);
-
-        float length = 0;
-
-        for (int i = 1; i < bezierPoints.Length; i++)
-        {
-            Vector3 relPosition = bezierPoints[i] - bezierPoints[i - 1];
-            length = length + relPosition.magnitude;
-        }
-
-        return length;
-    }
-
-
-    Tuple<float, Vector3, Quaternion, float, float, float, float> GetRobotPath(int index, float timeInWay, float step, float threshold, float maxAcc, float maxSpeed, float gain, float saturation)
-    {
-        // timeInWay should start from 1 step (ex. 0.05 sec) except very first (absolute time 0.0 sec)
-        // Should use x, z (plane)
-        Vector3 curWayPos = points[index].position;
-        Vector3 nextWayPos = points[index + 1].position;
-        Vector3 curWayPosPlane = curWayPos;
-        curWayPosPlane.y = 0;
-        Vector3 nextWayPosPlane = nextWayPos;
-        nextWayPosPlane.y = 0;
-
-        float timeInit = points[index].timeInit;
-        float attenTimeConst = timeInit + points[index].timeConst;
-        float execTime = points[index].execTime;
-        float totalTime = 0.0F;
-
-        float targetDistDiff = 0.0F;
-        float initSpeed = 0.0F;
-        float speedConst = points[index].speedConst;
-        float preTravel = 0.0F;
-        float curTravel = 0.0F;
-        float relTime = 0.0F;
-        float accInitSign = 1.0F;
-        if (index > 1)
-        {
-            accInitSign = points[index - 1].accInitSign;
-        }
-
-        if (timeInWay > 0.05)
-        {
-            relTime = rpaths[rpaths.Count - 1].relTimeInWay;
-        }
-        if (index > 0)
-        {
-            if (!points[index].hold)
-            {
-                initSpeed = points[index - 1].speedConst;
-            }
-        }
-        if (rpaths.Count > 0)
-        {
-            preTravel = rpaths[rpaths.Count - 1].travelRange;
-            totalTime = rpaths[rpaths.Count - 1].time;
-        }
-
-
-        
-        if (timeInWay >= 0 && timeInWay < timeInit)
-        {
-            targetDistDiff = initSpeed * step + accInitSign * maxAcc * (Mathf.Pow(timeInWay+step, 2) - Mathf.Pow(timeInWay, 2)) / 2;
-
-        }
-        else if (timeInWay > timeInit && timeInWay < attenTimeConst)
-        {
-            targetDistDiff = speedConst * step;
-        }
-        else if (timeInWay >= attenTimeConst)
-        {
-            float tempTime1 = timeInWay - attenTimeConst;
-            float tempTime2 = tempTime1 + step;
-            targetDistDiff = speedConst * step - maxAcc * (Mathf.Pow(tempTime2, 2) - Mathf.Pow(tempTime1, 2)) / 2;
-        }
-
-
-        relTime = timeInWay / execTime;
-        bool stop = false;
-        float curDistDiff = 0.0F;
-        float error = 0.0F;
-        float nextRelTime = relTime;
-        Vector3 posRelTime;
-        Vector3 posNextRelTime;
-        Vector3 nextPos = GetBezierPosition(index, nextRelTime);
-        Quaternion nextRot = GetLerpRotation(index, nextRelTime);
-
-        float tempSpeed = 0.0F;
-        float tempAcc = 0.0F;
-        
-        int count = 0;
-        while (!stop && count < 1000)
-        {
-            posRelTime = GetBezierPosition(index, relTime) - curWayPosPlane;
-            posRelTime.y = 0;
-            nextPos = GetBezierPosition(index, nextRelTime);
-            posNextRelTime = nextPos - curWayPosPlane;
-            nextRot = GetLerpRotation(index, nextRelTime);
-            posNextRelTime.y = 0;
-            curDistDiff = posNextRelTime.magnitude - posRelTime.magnitude;
-            //curDistDiff = (posNextRelTime - posRelTime).magnitude;
-            error = targetDistDiff - curDistDiff;
-
-            tempSpeed = (posNextRelTime - posRelTime).magnitude / step;
-            if (rpaths.Count > 1)
-            {
-                tempAcc = (tempSpeed - rpaths[rpaths.Count - 1].mobileSpeed) / step;
-            }
-
-            if (tempSpeed > maxSpeed || tempAcc > maxAcc)
-            {
-                gain *= 0.01F;
-            }
-            
-
-            if (Mathf.Abs(error) > saturation)
-            {
-                error = saturation * (error / Mathf.Abs(error));
-            }
-
-            if (error < threshold)
-            {
-                stop = true;
-            }
-            else
-            {
-                nextRelTime = nextRelTime + gain * error;
-                if (nextRelTime > 0.997F)
-                {
-                    nextRelTime = nextRelTime - 2* gain * error;
-                    gain *= 0.9F;
-                }
-            }
-            count++;
-        }
-
-        float curSpeed = tempSpeed;
-        curTravel = preTravel + curDistDiff;
-        totalTime = totalTime + step;
-        //RobotPath currentPath = new RobotPath(totalTime, nextPos, nextRot, curSpeed, curTravel);
-        //currentPath.relTimeInWay = nextRelTime;
-
-        //return currentPath;
-        return new Tuple<float, Vector3, Quaternion, float, float, float, float>(totalTime, nextPos, nextRot, curSpeed, curTravel, nextRelTime, tempAcc);
-    }
-
-    
-    public void GenPath(float rate, float threshold, float maxAcc, float maxSpeed, float gain, float saturation)
+    public void GenPath(float time, float rate, float deltaAppAlpha)
     {
         rpaths = new List<RobotPath>();
         //int length = (int)(time / rate) + 1;
         if (rate == 0) return;
         float step = 1.0F / rate;
+        float travelRange = 0.0F;
 
+        UpdateTimeInSeconds(time);
         currentWaypointIndex = 0;
         bool holdDone = false;
         float currentTime = 0.0F;
-
-        for (int i=0; i < points.Count; i++)
-        {
-            UpdateTrajectoryInfo(i, maxAcc);
-        }
-
-        //RobotPath temp = new RobotPath(currentTime, tpos, trot, 0.0F, 0.0F);
+        float delta = 0.0F;
+        float expIn = 0.0F;
+        float relTimeIn = 0.0F;
 
         while (currentWaypointIndex < points.Count)
         {
-            float timeInWay = 0.0F;
-            while (timeInWay < points[currentWaypointIndex+1].execTime)
+            currentTimeInWaypoint = 0;
+            Vector3 position;
+            Quaternion rotation;
+            float speed = 0.0F;
+
+            float factor = 1.0F;
+            float relTime = 0.0F;
+            float sigma = 0.3F;
+            float mu = 0.0F;
+            relTimeIn = 0.0F;
+
+            while (relTime < 1.0F)
+            {
+                factor += Gaussian(relTime, mu, sigma);
+                relTime += step / points[currentWaypointIndex + 1].execTime;
+            }
+
+            while (currentTimeInWaypoint < 1)
             {
                 if (!points[currentWaypointIndex].hold || holdDone)
                 {
-                    var result = GetRobotPath(currentWaypointIndex, timeInWay, step, threshold, maxAcc, maxSpeed, gain, saturation);
-                    RobotPath temp = new RobotPath(result.Item1, result.Item2, result.Item3, result.Item4, result.Item5);
-                    temp.relTimeInWay = result.Item6;
-                    temp.currentAcc = result.Item7;
-                    rpaths.Add(temp);
-                    currentTime += step;
-                    //currentTimeInWaypoint += step / points[currentWaypointIndex].execTime;
+
+                    //currentTimeInWaypoint += (Mathf.PI/2) * Mathf.Sin((step / points[currentWaypointIndex + 1].execTime) * Mathf.PI);
+                    //expIn = - Mathf.Pow((2 * currentTimeInWaypoint - 1) / deltaAppAlpha, 2);
+                    //delta = Mathf.Exp(expIn) / (deltaAppAlpha * Mathf.Sqrt(Mathf.PI));
+
+                    relTimeIn += Gaussian(currentTimeInWaypoint, mu, sigma) / factor;
+                    position = GetBezierPosition(currentWaypointIndex, relTimeIn);
+                    rotation = GetLerpRotation(currentWaypointIndex, relTimeIn);
                     //position = GetBezierPosition(currentWaypointIndex, currentTimeInWaypoint);
                     //rotation = GetLerpRotation(currentWaypointIndex, currentTimeInWaypoint);
+                    currentTimeInWaypoint += step / points[currentWaypointIndex + 1].execTime;
                 }
                 else
                 {
-                    var result = GetRobotPath(currentWaypointIndex, 0.0F, step, threshold, maxAcc, maxSpeed, gain, saturation);
-                    RobotPath temp = new RobotPath(result.Item1, result.Item2, result.Item3, result.Item4, result.Item5);
-                    temp.relTimeInWay = result.Item6;
-                    temp.currentAcc = result.Item7;
-                    rpaths.Add(temp);
-                    currentTime += step;
-                    //currentTimeInWaypoint += step / points[currentWaypointIndex].holdTime;
-                    //position = GetBezierPosition(currentWaypointIndex, 0.0F);
-                    //rotation = GetLerpRotation(currentWaypointIndex, 0.0F);
+                    currentTimeInWaypoint += step / points[currentWaypointIndex].holdTime;
+                    position = GetBezierPosition(currentWaypointIndex, 0.0F);
+                    rotation = GetLerpRotation(currentWaypointIndex, 0.0F);
                 }
-                timeInWay += step;
-                //RobotPath temp = new RobotPath(, position, rotation, speed, travelRange);
-                //rpaths.Add(temp);
-                //currentTime += step;
+
+                if (rpaths.Count > 0)
+                {
+                    Vector3 prePosition = rpaths[rpaths.Count - 1].position;
+                    Vector3 curPosition = position;
+                    prePosition.y = 0;
+                    curPosition.y = 0;
+                    float dist = Vector3.Distance(curPosition, prePosition);
+                    speed = dist / (1.0F / rate);
+                    travelRange += dist;
+                }
+
+                RobotPath temp = new RobotPath(currentTime, position, rotation, speed, travelRange);
+                rpaths.Add(temp);
+                currentTime += step;
             }
 
             if (!points[currentWaypointIndex].hold || holdDone)
@@ -647,7 +387,7 @@ public class CPC_CameraPath : MonoBehaviour
 
         PathToStr();
     }
-    
+
 
 
     IEnumerator FollowPath(float time)
@@ -704,8 +444,6 @@ public class CPC_CameraPath : MonoBehaviour
             return 0;
         return index + 1;
     }
-
-
 
     Vector3 GetBezierPosition(int pointIndex, float time)
     {
