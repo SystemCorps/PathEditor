@@ -34,7 +34,7 @@ public class CPC_CameraPathInspector : Editor
     private CPC_ENewWaypointMode waypointMode;
     private int waypointIndex = 1;
     private CPC_ECurveType allCurveType = CPC_ECurveType.Custom;
-    private AnimationCurve allAnimationCurve = AnimationCurve.EaseInOut(0,0,1,1);
+    private AnimationCurve allAnimationCurve = AnimationCurve.EaseInOut(0, 0, 1, 1);
 
     //GUIContents
     private GUIContent addPointContent = new GUIContent("Add Point", "Adds a waypoint at the scene view camera's position/rotation");
@@ -74,14 +74,12 @@ public class CPC_CameraPathInspector : Editor
 
     private bool hasScrollBar = false;
 
-    float robotMaxSpeed = 1.0F;
+    float robotMaxSpeed = 1.5F;
     float robotMaxHeight = 0.8602F + 0.461F;
     float robotCtrlRate = 20.0F;
     float robotMaxAcc = 0.5F;
     float robotAccTime = 1.0F;
-    float threshold = 0.00001F;
-    float gain = 0.01F;
-    float saturation = 0.0001F;
+    float deltaAppAlpha = 100F;
 
     bool canSave = false;
     // Robot related
@@ -127,9 +125,6 @@ public class CPC_CameraPathInspector : Editor
 
         float constTime = constLength / robotMaxSpeed;
         float totalTime = constTime + 2 * robotAccTime + 0.5F;
-        double temp = (double)totalTime;
-        temp = Math.Round(temp, 3);
-        totalTime = (float)temp;
 
         return totalTime;
     }
@@ -141,7 +136,7 @@ public class CPC_CameraPathInspector : Editor
         {
 
             //t.GenPath(playOnAwakeTimeProperty.floatValue, robotCtrlRate);
-            t.GenPath(robotCtrlRate, threshold, robotMaxAcc, robotMaxSpeed, gain, saturation);
+            t.GenPath(robotCtrlRate, robotMaxAcc, robotMaxSpeed);
             canSave = true;
         }
 
@@ -155,7 +150,7 @@ public class CPC_CameraPathInspector : Editor
                 {
                     t.PathSave(directory);
                 }
-                
+
             }
         }
     }
@@ -170,8 +165,8 @@ public class CPC_CameraPathInspector : Editor
     void OnEnable()
     {
         EditorApplication.update += Update;
-        
-        t = (CPC_CameraPath) target;
+
+        t = (CPC_CameraPath)target;
         if (t == null) return;
 
         SetupEditorVariables();
@@ -214,7 +209,7 @@ public class CPC_CameraPathInspector : Editor
         GUILayout.Space(5);
         DrawBasicSettings();
         GUILayout.Space(5);
-        GUILayout.Box("", GUILayout.Width(Screen.width-20), GUILayout.Height(3));
+        GUILayout.Box("", GUILayout.Width(Screen.width - 20), GUILayout.Height(3));
         DrawVisualDropdown();
         GUILayout.Box("", GUILayout.Width(Screen.width - 20), GUILayout.Height(3));
         DrawManipulationDropdown();
@@ -251,7 +246,7 @@ public class CPC_CameraPathInspector : Editor
         cameraTranslateMode = (CPC_EManipulationModes)PlayerPrefs.GetInt("CPC_cameraTranslateMode", 1);
         cameraRotationMode = (CPC_EManipulationModes)PlayerPrefs.GetInt("CPC_cameraRotationMode", 1);
         handlePositionMode = (CPC_EManipulationModes)PlayerPrefs.GetInt("CPC_handlePositionMode", 0);
-        waypointMode = (CPC_ENewWaypointMode) PlayerPrefs.GetInt("CPC_waypointMode", 0);
+        waypointMode = (CPC_ENewWaypointMode)PlayerPrefs.GetInt("CPC_waypointMode", 0);
         time = PlayerPrefs.GetFloat("CPC_time", 10);
     }
 
@@ -289,7 +284,7 @@ public class CPC_CameraPathInspector : Editor
             fullWidth -= 40;
             rect.height /= 2;
             GUI.Label(rect, "#" + (index + 1));
-            rect.y += rect.height-3;
+            rect.y += rect.height - 3;
             rect.x -= 14;
             rect.width += 12;
             if (GUI.Button(rect, t.points[index].chained ? chainedContent : unchainedContent))
@@ -297,7 +292,7 @@ public class CPC_CameraPathInspector : Editor
                 Undo.RecordObject(t, "Changed chain type");
                 t.points[index].chained = !t.points[index].chained;
             }
-            rect.x += rect.width+2;
+            rect.x += rect.width + 2;
             rect.y = startRectY;
             //Position
             rect.width = (fullWidth - 22) / 3 - 1;
@@ -400,7 +395,7 @@ public class CPC_CameraPathInspector : Editor
 
                 if (t.points[index].hold)
                 {
-                    t.points[index].startTime = t.points[index - 1].startTime + t.points[index].holdTime + t.points[index].execTime;  
+                    t.points[index].startTime = t.points[index - 1].startTime + t.points[index].holdTime + t.points[index].execTime;
                 }
                 else
                 {
@@ -489,7 +484,7 @@ public class CPC_CameraPathInspector : Editor
                 playOnAwakeTimeProperty.floatValue = minExecTime;
                 SceneView.RepaintAll();
             }
-            
+
             if (holdFlag && time < totalHoldTime + minExecTime)
             {
                 time = totalHoldTime + minExecTime;
@@ -619,7 +614,7 @@ public class CPC_CameraPathInspector : Editor
         GUILayout.EndHorizontal();
 
         GUILayout.BeginHorizontal();
-        loopedProperty.boolValue = GUILayout.Toggle(loopedProperty.boolValue, "Looped", GUILayout.Width(Screen.width/3f));
+        loopedProperty.boolValue = GUILayout.Toggle(loopedProperty.boolValue, "Looped", GUILayout.Width(Screen.width / 3f));
         GUI.enabled = loopedProperty.boolValue;
         GUILayout.Label("After loop:", GUILayout.Width(Screen.width / 4f));
         afterLoopProperty.enumValueIndex = Convert.ToInt32(EditorGUILayout.EnumPopup((CPC_EAfterLoop)afterLoopProperty.intValue));
@@ -717,7 +712,7 @@ public class CPC_CameraPathInspector : Editor
         GUILayout.EndHorizontal();
         GUILayout.EndVertical();
         GUILayout.BeginHorizontal();
-        GUILayout.Space(Screen.width/2f-20);
+        GUILayout.Space(Screen.width / 2f - 20);
         GUILayout.Label("↓");
         GUILayout.EndHorizontal();
         serializedObject.Update();
@@ -753,12 +748,12 @@ public class CPC_CameraPathInspector : Editor
                     t.points[t.points.Count - 1].minExecTime = CalMinExecTime(t.points[t.points.Count - 2], t.points[t.points.Count - 1]);
                     break;
                 case CPC_ENewWaypointMode.WaypointIndex:
-                    if (t.points.Count > waypointIndex-1 && waypointIndex > 0)
-                        t.points.Add(new CPC_Point(t.points[waypointIndex-1].position, t.points[waypointIndex-1].rotation) { handlenext = t.points[waypointIndex-1].handlenext, handleprev = t.points[waypointIndex-1].handleprev });
+                    if (t.points.Count > waypointIndex - 1 && waypointIndex > 0)
+                        t.points.Add(new CPC_Point(t.points[waypointIndex - 1].position, t.points[waypointIndex - 1].rotation) { handlenext = t.points[waypointIndex - 1].handlenext, handleprev = t.points[waypointIndex - 1].handleprev });
                     else
                     {
                         t.points.Add(new CPC_Point(Vector3.zero, Quaternion.identity));
-                        Debug.LogWarning("Waypoint index "+waypointIndex+" does not exist, defaulting position to world center");
+                        Debug.LogWarning("Waypoint index " + waypointIndex + " does not exist, defaulting position to world center");
                     }
                     t.points[t.points.Count - 1].minExecTime = CalMinExecTime(t.points[t.points.Count - 2], t.points[t.points.Count - 1]);
                     break;
@@ -773,7 +768,7 @@ public class CPC_CameraPathInspector : Editor
         }
         GUILayout.Label("at", GUILayout.Width(20));
         EditorGUI.BeginChangeCheck();
-        waypointMode = (CPC_ENewWaypointMode) EditorGUILayout.EnumPopup(waypointMode, waypointMode==CPC_ENewWaypointMode.WaypointIndex ? GUILayout.Width(Screen.width/4) : GUILayout.Width(Screen.width/2));
+        waypointMode = (CPC_ENewWaypointMode)EditorGUILayout.EnumPopup(waypointMode, waypointMode == CPC_ENewWaypointMode.WaypointIndex ? GUILayout.Width(Screen.width / 4) : GUILayout.Width(Screen.width / 2));
         if (waypointMode == CPC_ENewWaypointMode.WaypointIndex)
         {
             waypointIndex = EditorGUILayout.IntField(waypointIndex, GUILayout.Width(Screen.width / 4));
@@ -985,7 +980,7 @@ public class CPC_CameraPathInspector : Editor
 
         if (showRawValues)
         {
-            for(int i=0; i < t.points.Count; i++)
+            for (int i = 0; i < t.points.Count; i++)
             {
                 EditorGUI.BeginChangeCheck();
                 GUILayout.BeginVertical("Box");

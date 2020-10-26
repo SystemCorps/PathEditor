@@ -1,1 +1,3 @@
-catkin_ws/
+Library/*
+Logs/*
+obj/*

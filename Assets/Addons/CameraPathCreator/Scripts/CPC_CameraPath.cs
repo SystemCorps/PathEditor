@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.IO;
 using UnityEngine;
 
+
 [System.Serializable]
 public class CPC_Visual
 {
@@ -97,13 +98,13 @@ public class RobotPath
     public float relTimeInWay;
     public float currentAcc;
 
-    public RobotPath(float t, Vector3 pos, Quaternion rot, float spd, float travel)
+    public RobotPath(float t, Vector3 pos, Quaternion rot)
     {
         time = t;
         position = pos;
         rotation = rot;
-        mobileSpeed = spd;
-        travelRange = travel;
+        mobileSpeed = 0.0F;
+        travelRange = 0.0F;
         relTimeInWay = 0.0F;
         currentAcc = 0.0F;
     }
@@ -344,7 +345,7 @@ public class CPC_CameraPath : MonoBehaviour
         if (index > 0)
         {
             curMeanSpeed = Length / execTime;
-            if (!points[index-1].hold)
+            if (!points[index].hold)
             {
                 preMeanSpeed = points[index - 1].speedMean;
                 initSpeed = points[index - 1].speedConst;
@@ -363,7 +364,7 @@ public class CPC_CameraPath : MonoBehaviour
             sign = +1.0F;
         }
 
-        if ((index == points.Count-1) || points[index+1].hold)
+        if ((index == points.Count-2) || points[index+1].hold)
         {
             if (curMeanSpeed > preMeanSpeed)
             {
@@ -416,7 +417,89 @@ public class CPC_CameraPath : MonoBehaviour
         }
     }
 
+    public static double[] Butterworth(double[] indata, double deltaTimeinsec, double CutOff)
+    {
+        if (indata == null) return null;
+        if (CutOff == 0) return indata;
 
+        double Samplingrate = 1 / deltaTimeinsec;
+        long dF2 = indata.Length - 1;        // The data range is set with dF2
+        double[] Dat2 = new double[dF2 + 4]; // Array with 4 extra points front and back
+        double[] data = indata; // Ptr., changes passed data
+
+        // Copy indata to Dat2
+        for (long r = 0; r < dF2; r++)
+        {
+            Dat2[2 + r] = indata[r];
+        }
+        Dat2[1] = Dat2[0] = indata[0];
+        Dat2[dF2 + 3] = Dat2[dF2 + 2] = indata[dF2];
+
+        const double pi = 3.14159265358979;
+        double wc = Math.Tan(CutOff * pi / Samplingrate);
+        double k1 = 1.414213562 * wc; // Sqrt(2) * wc
+        double k2 = wc * wc;
+        double a = k2 / (1 + k1 + k2);
+        double b = 2 * a;
+        double c = a;
+        double k3 = b / k2;
+        double d = -2 * a + k3;
+        double e = 1 - (2 * a) - k3;
+
+        // RECURSIVE TRIGGERS - ENABLE filter is performed (first, last points constant)
+        double[] DatYt = new double[dF2 + 4];
+        DatYt[1] = DatYt[0] = indata[0];
+        for (long s = 2; s < dF2 + 2; s++)
+        {
+            DatYt[s] = a * Dat2[s] + b * Dat2[s - 1] + c * Dat2[s - 2]
+                       + d * DatYt[s - 1] + e * DatYt[s - 2];
+        }
+        DatYt[dF2 + 3] = DatYt[dF2 + 2] = DatYt[dF2 + 1];
+
+        // FORWARD filter
+        double[] DatZt = new double[dF2 + 2];
+        DatZt[dF2] = DatYt[dF2 + 2];
+        DatZt[dF2 + 1] = DatYt[dF2 + 3];
+        for (long t = -dF2 + 1; t <= 0; t++)
+        {
+            DatZt[-t] = a * DatYt[-t + 2] + b * DatYt[-t + 3] + c * DatYt[-t + 4]
+                        + d * DatZt[-t + 1] + e * DatZt[-t + 2];
+        }
+
+        // Calculated points copied for return
+        for (long p = 0; p < dF2; p++)
+        {
+            data[p] = DatZt[p];
+        }
+
+        return data;
+    }
+
+
+    void ApplyLPF(double dTime, double cutOff)
+    {
+        double[] xd = new double[rpaths.Count];
+        double[] yd = new double[rpaths.Count];
+        double[] zd = new double[rpaths.Count];
+
+        for (int i=0; i < xd.Length; i++)
+        {
+            xd[i] = Convert.ToDouble(rpaths[i].position.x);
+            yd[i] = Convert.ToDouble(rpaths[i].position.y);
+            zd[i] = Convert.ToDouble(rpaths[i].position.z);
+        }
+
+        xd = Butterworth(xd, dTime, cutOff);
+        yd = Butterworth(yd, dTime, cutOff);
+        zd = Butterworth(zd, dTime, cutOff);
+
+        for (int i = 0; i < xd.Length; i++)
+        {
+            rpaths[i].position.x = Convert.ToSingle(xd[i]);
+            rpaths[i].position.y = Convert.ToSingle(yd[i]);
+            rpaths[i].position.z = Convert.ToSingle(zd[i]);
+        }
+    }
 
 
 
@@ -450,6 +533,10 @@ public class CPC_CameraPath : MonoBehaviour
     Vector3[] GetBezierPoints(int currentIndex)
     {
         Vector3 startPosition = points[currentIndex].position;
+        if (rpaths.Count > 1)
+        {
+            startPosition = rpaths[rpaths.Count - 1].position;
+        }
         Vector3 startTangent = points[currentIndex].position + points[currentIndex].handlenext;
 
         int nextIndex = GetNextIndex(currentIndex);
@@ -457,7 +544,7 @@ public class CPC_CameraPath : MonoBehaviour
         Vector3 endTangent = points[nextIndex].position + points[nextIndex].handleprev;
 
         Vector3[] bezierPoints;
-        int division = 1000;
+        int division = 10000;
 
         bezierPoints = UnityEditor.Handles.MakeBezierPoints(startPosition, endPosition, startTangent, endTangent, division);
 
@@ -465,7 +552,8 @@ public class CPC_CameraPath : MonoBehaviour
     }
 
 
-    Tuple<float Vector3, Quaternion, float, float, float, float> GetRobotAvailPath(Vector3[] bezierPoints, Vector3 curPos, int index, float timeInWay, float step, float maxAcc, float maxSpeed)
+    //  Tuple<float Vector3, Quaternion, float, float, float, float>
+    Tuple<int, Vector3> GetRobotAvailPath(Vector3[] bezierPoints, Vector3 curPos, int index, float timeInWay, float step, float maxAcc, float maxSpeed, int preBezIdx)
     {
         float timeInit = points[index].timeInit;
         float attenTimeConst = timeInit + points[index].timeConst;
@@ -480,9 +568,9 @@ public class CPC_CameraPath : MonoBehaviour
         float relTime = 0.0F;
         float accInitSign = 1.0F;
 
-        if (index > 1)
+        if (index > 0)
         {
-            accInitSign = points[index - 1].accInitSign;
+            accInitSign = points[index].accInitSign;
         }
 
         if (timeInWay > 0.05)
@@ -524,7 +612,7 @@ public class CPC_CameraPath : MonoBehaviour
         float[] relDist = new float[bezierPoints.Length];
         int minIdx = 0;
         float minDist = 100F;
-        for (int i=0; i < bezierPoints.Length; i++)
+        for (int i=preBezIdx; i < bezierPoints.Length; i++)
         {
             Vector3 relPos = bezierPoints[i] - curPos;
             relPos.y = 0;
@@ -536,159 +624,75 @@ public class CPC_CameraPath : MonoBehaviour
                 minDist = relDist[i];
             }
         }
+        preBezIdx = minIdx;
+
+        Vector3 target;
         Vector3 subTarget = bezierPoints[minIdx];
         Vector3 relVector = subTarget - curPos;
-        relVector.y = 0.0F;
+        Vector3 relTarget;
+        relTarget.x = 0;
+        relTarget.y = 0;
+        relTarget.z = 0;
 
-        float slope = relVector.z / relVector.x;
-        float a = 1.0F;
-        float b = Mathf.Pow(slope, 2);
-        float c = -Mathf.Pow(targetDistDiff, 2);
-
-        float xRelt1 = (-b + Mathf.Sqrt((b * b - 4 * a * c))) / (2 * a);
-        float xRelt2 = (-b - Mathf.Sqrt((b * b - 4 * a * c))) / (2 * a);
-
-        float yRelt1 = slope * xRelt1;
-        float yRelt2 = slope * xRelt2;
-
-    }
-
-
-    Tuple<float, Vector3, Quaternion, float, float, float, float> GetRobotPath(int index, float timeInWay, float step, float threshold, float maxAcc, float maxSpeed, float gain, float saturation)
-    {
-        // timeInWay should start from 1 step (ex. 0.05 sec) except very first (absolute time 0.0 sec)
-        // Should use x, z (plane)
-        Vector3 curWayPos = points[index].position;
-        Vector3 nextWayPos = points[index + 1].position;
-        Vector3 curWayPosPlane = curWayPos;
-        curWayPosPlane.y = 0;
-        Vector3 nextWayPosPlane = nextWayPos;
-        nextWayPosPlane.y = 0;
-
-        float timeInit = points[index].timeInit;
-        float attenTimeConst = timeInit + points[index].timeConst;
-        float execTime = points[index].execTime;
-        float totalTime = 0.0F;
-
-        float targetDistDiff = 0.0F;
-        float initSpeed = 0.0F;
-        float speedConst = points[index].speedConst;
-        float preTravel = 0.0F;
-        float curTravel = 0.0F;
-        float relTime = 0.0F;
-        float accInitSign = 1.0F;
-        if (index > 1)
+        if (relVector.x == 0 && relVector.z == 0)
         {
-            accInitSign = points[index - 1].accInitSign;
+            relTarget.x = 0;
+            relTarget.y = 0;
+            relTarget.z = 0;
         }
+        else if (relVector.x == 0)
+        {
+            float zRelt = targetDistDiff * Mathf.Sign(relVector.z);
+            float yRelt = Mathf.Abs(targetDistDiff / relVector.z) * relVector.y;
 
-        if (timeInWay > 0.05)
-        {
-            relTime = rpaths[rpaths.Count - 1].relTimeInWay;
+            relTarget.x = 0;
+            relTarget.y = yRelt;
+            relTarget.z = zRelt;
         }
-        if (index > 0)
+        else if (relVector.z == 0)
         {
-            if (!points[index].hold)
+            float xRelt = targetDistDiff * Mathf.Sign(relVector.x);
+            float yRelt = Mathf.Abs(targetDistDiff / relVector.x) * relVector.y;
+
+            relTarget.x = xRelt;
+            relTarget.y = yRelt;
+            relTarget.z = 0;
+        }
+        else
+        {
+            float slope = relVector.z / relVector.x;
+
+            float xRelt1 = targetDistDiff / Mathf.Sqrt(Mathf.Pow(slope, 2) + 1);
+            float xRelt2 = -targetDistDiff / Mathf.Sqrt(Mathf.Pow(slope, 2) + 1);
+
+            float yRelt1 = Mathf.Abs(xRelt1 / relVector.x) * relVector.y;
+            float yRelt2 = Mathf.Abs(xRelt2 / relVector.x) * relVector.y;
+
+            float zRelt1 = slope * xRelt1;
+            float zRelt2 = slope * xRelt2;
+
+            if (Mathf.Sign(xRelt1) == Mathf.Sign(relVector.x))
             {
-                initSpeed = points[index - 1].speedConst;
-            }
-        }
-        if (rpaths.Count > 0)
-        {
-            preTravel = rpaths[rpaths.Count - 1].travelRange;
-            totalTime = rpaths[rpaths.Count - 1].time;
-        }
-
-
-        
-        if (timeInWay >= 0 && timeInWay < timeInit)
-        {
-            targetDistDiff = initSpeed * step + accInitSign * maxAcc * (Mathf.Pow(timeInWay+step, 2) - Mathf.Pow(timeInWay, 2)) / 2;
-
-        }
-        else if (timeInWay > timeInit && timeInWay < attenTimeConst)
-        {
-            targetDistDiff = speedConst * step;
-        }
-        else if (timeInWay >= attenTimeConst)
-        {
-            float tempTime1 = timeInWay - attenTimeConst;
-            float tempTime2 = tempTime1 + step;
-            targetDistDiff = speedConst * step - maxAcc * (Mathf.Pow(tempTime2, 2) - Mathf.Pow(tempTime1, 2)) / 2;
-        }
-
-
-        relTime = timeInWay / execTime;
-        bool stop = false;
-        float curDistDiff = 0.0F;
-        float error = 0.0F;
-        float nextRelTime = relTime;
-        Vector3 posRelTime;
-        Vector3 posNextRelTime;
-        Vector3 nextPos = GetBezierPosition(index, nextRelTime);
-        Quaternion nextRot = GetLerpRotation(index, nextRelTime);
-
-        float tempSpeed = 0.0F;
-        float tempAcc = 0.0F;
-        
-        int count = 0;
-        while (!stop && count < 1000)
-        {
-            posRelTime = GetBezierPosition(index, relTime) - curWayPosPlane;
-            posRelTime.y = 0;
-            nextPos = GetBezierPosition(index, nextRelTime);
-            posNextRelTime = nextPos - curWayPosPlane;
-            nextRot = GetLerpRotation(index, nextRelTime);
-            posNextRelTime.y = 0;
-            curDistDiff = posNextRelTime.magnitude - posRelTime.magnitude;
-            //curDistDiff = (posNextRelTime - posRelTime).magnitude;
-            error = targetDistDiff - curDistDiff;
-
-            tempSpeed = (posNextRelTime - posRelTime).magnitude / step;
-            if (rpaths.Count > 1)
-            {
-                tempAcc = (tempSpeed - rpaths[rpaths.Count - 1].mobileSpeed) / step;
-            }
-
-            if (tempSpeed > maxSpeed || tempAcc > maxAcc)
-            {
-                gain *= 0.01F;
-            }
-            
-
-            if (Mathf.Abs(error) > saturation)
-            {
-                error = saturation * (error / Mathf.Abs(error));
-            }
-
-            if (error < threshold)
-            {
-                stop = true;
+                relTarget.x = xRelt1;
+                relTarget.y = yRelt1;
+                relTarget.z = zRelt1;
             }
             else
             {
-                nextRelTime = nextRelTime + gain * error;
-                if (nextRelTime > 0.997F)
-                {
-                    nextRelTime = nextRelTime - 2* gain * error;
-                    gain *= 0.9F;
-                }
+                relTarget.x = xRelt2;
+                relTarget.y = yRelt2;
+                relTarget.z = zRelt2;
             }
-            count++;
         }
+         
 
-        float curSpeed = tempSpeed;
-        curTravel = preTravel + curDistDiff;
-        totalTime = totalTime + step;
-        //RobotPath currentPath = new RobotPath(totalTime, nextPos, nextRot, curSpeed, curTravel);
-        //currentPath.relTimeInWay = nextRelTime;
+        target = curPos + relTarget;
 
-        //return currentPath;
-        return new Tuple<float, Vector3, Quaternion, float, float, float, float>(totalTime, nextPos, nextRot, curSpeed, curTravel, nextRelTime, tempAcc);
+        return new Tuple<int, Vector3>(preBezIdx, target);
     }
 
     
-    public void GenPath(float rate, float threshold, float maxAcc, float maxSpeed, float gain, float saturation)
+    public void GenPath(float rate, float maxAcc, float maxSpeed)
     {
         rpaths = new List<RobotPath>();
         //int length = (int)(time / rate) + 1;
@@ -699,38 +703,66 @@ public class CPC_CameraPath : MonoBehaviour
         bool holdDone = false;
         float currentTime = 0.0F;
 
-        for (int i=0; i < points.Count; i++)
+        for (int i=0; i < points.Count-1; i++)
         {
             UpdateTrajectoryInfo(i, maxAcc);
         }
 
         //RobotPath temp = new RobotPath(currentTime, tpos, trot, 0.0F, 0.0F);
-
+        Vector3 curPos = points[0].position;
         while (currentWaypointIndex < points.Count)
         {
             float timeInWay = 0.0F;
-            while (timeInWay < points[currentWaypointIndex+1].execTime)
+            Vector3[] bePoints = GetBezierPoints(currentWaypointIndex);
+            int preBezIdx = 0;
+            currentTimeInWaypoint = 0.0F;
+            //timeInWay < points[currentWaypointIndex+1].execTime
+            while (currentTimeInWaypoint < 1)
             {
                 if (!points[currentWaypointIndex].hold || holdDone)
                 {
+                    var result = GetRobotAvailPath(bePoints, curPos, currentWaypointIndex, timeInWay, step, maxAcc, maxSpeed, preBezIdx);
+                    preBezIdx = result.Item1;
+                    Vector3 position = result.Item2;
+                    Quaternion rotation = GetLerpRotation(currentWaypointIndex, currentTimeInWaypoint);
+                    curPos = position;
+
+                    RobotPath temp = new RobotPath(currentTime, position, rotation);
+                    rpaths.Add(temp);
+                    
+                    currentTimeInWaypoint += step / points[currentWaypointIndex+1].execTime;
+                    currentTime += step;
+                    /*
                     var result = GetRobotPath(currentWaypointIndex, timeInWay, step, threshold, maxAcc, maxSpeed, gain, saturation);
                     RobotPath temp = new RobotPath(result.Item1, result.Item2, result.Item3, result.Item4, result.Item5);
                     temp.relTimeInWay = result.Item6;
                     temp.currentAcc = result.Item7;
                     rpaths.Add(temp);
-                    currentTime += step;
+                    */
+
                     //currentTimeInWaypoint += step / points[currentWaypointIndex].execTime;
                     //position = GetBezierPosition(currentWaypointIndex, currentTimeInWaypoint);
                     //rotation = GetLerpRotation(currentWaypointIndex, currentTimeInWaypoint);
                 }
                 else
                 {
+                    //Vector3 position = points[currentWaypointIndex].position;
+                    Vector3 position = curPos;
+                    Quaternion rotation = points[currentWaypointIndex].rotation;
+
+                    RobotPath temp = new RobotPath(currentTime, position, rotation);
+                    rpaths.Add(temp);
+
+                    currentTimeInWaypoint += step / points[currentWaypointIndex].holdTime;
+
+                    currentTime += step;
+                    /*
                     var result = GetRobotPath(currentWaypointIndex, 0.0F, step, threshold, maxAcc, maxSpeed, gain, saturation);
                     RobotPath temp = new RobotPath(result.Item1, result.Item2, result.Item3, result.Item4, result.Item5);
                     temp.relTimeInWay = result.Item6;
                     temp.currentAcc = result.Item7;
                     rpaths.Add(temp);
-                    currentTime += step;
+                    */
                     //currentTimeInWaypoint += step / points[currentWaypointIndex].holdTime;
                     //position = GetBezierPosition(currentWaypointIndex, 0.0F);
                     //rotation = GetLerpRotation(currentWaypointIndex, 0.0F);
@@ -751,7 +783,7 @@ public class CPC_CameraPath : MonoBehaviour
             if (currentWaypointIndex == points.Count - 1 && !looped) break;
             if (currentWaypointIndex == points.Count && afterLoop == CPC_EAfterLoop.Continue) currentWaypointIndex = 0;
         }
-
+        //ApplyLPF(1.0 / 50.0, 10.0);
         PathToStr();
     }
     
