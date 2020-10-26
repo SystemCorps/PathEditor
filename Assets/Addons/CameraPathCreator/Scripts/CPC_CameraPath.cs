@@ -447,6 +447,113 @@ public class CPC_CameraPath : MonoBehaviour
     }
 
 
+    Vector3[] GetBezierPoints(int currentIndex)
+    {
+        Vector3 startPosition = points[currentIndex].position;
+        Vector3 startTangent = points[currentIndex].position + points[currentIndex].handlenext;
+
+        int nextIndex = GetNextIndex(currentIndex);
+        Vector3 endPosition = points[nextIndex].position;
+        Vector3 endTangent = points[nextIndex].position + points[nextIndex].handleprev;
+
+        Vector3[] bezierPoints;
+        int division = 1000;
+
+        bezierPoints = UnityEditor.Handles.MakeBezierPoints(startPosition, endPosition, startTangent, endTangent, division);
+
+        return bezierPoints;
+    }
+
+
+    Tuple<float Vector3, Quaternion, float, float, float, float> GetRobotAvailPath(Vector3[] bezierPoints, Vector3 curPos, int index, float timeInWay, float step, float maxAcc, float maxSpeed)
+    {
+        float timeInit = points[index].timeInit;
+        float attenTimeConst = timeInit + points[index].timeConst;
+        float execTime = points[index].execTime;
+        float totalTime = 0.0F;
+
+        float targetDistDiff = 0.0F;
+        float initSpeed = 0.0F;
+        float speedConst = points[index].speedConst;
+        float preTravel = 0.0F;
+        float curTravel = 0.0F;
+        float relTime = 0.0F;
+        float accInitSign = 1.0F;
+
+        if (index > 1)
+        {
+            accInitSign = points[index - 1].accInitSign;
+        }
+
+        if (timeInWay > 0.05)
+        {
+            relTime = rpaths[rpaths.Count - 1].relTimeInWay;
+        }
+        if (index > 0)
+        {
+            if (!points[index].hold)
+            {
+                initSpeed = points[index - 1].speedConst;
+            }
+        }
+        if (rpaths.Count > 0)
+        {
+            preTravel = rpaths[rpaths.Count - 1].travelRange;
+            totalTime = rpaths[rpaths.Count - 1].time;
+        }
+
+
+
+        if (timeInWay >= 0 && timeInWay < timeInit)
+        {
+            targetDistDiff = initSpeed * step + accInitSign * maxAcc * (Mathf.Pow(timeInWay + step, 2) - Mathf.Pow(timeInWay, 2)) / 2;
+
+        }
+        else if (timeInWay > timeInit && timeInWay < attenTimeConst)
+        {
+            targetDistDiff = speedConst * step;
+        }
+        else if (timeInWay >= attenTimeConst)
+        {
+            float tempTime1 = timeInWay - attenTimeConst;
+            float tempTime2 = tempTime1 + step;
+            targetDistDiff = speedConst * step - maxAcc * (Mathf.Pow(tempTime2, 2) - Mathf.Pow(tempTime1, 2)) / 2;
+        }
+
+
+        float[] relDist = new float[bezierPoints.Length];
+        int minIdx = 0;
+        float minDist = 100F;
+        for (int i=0; i < bezierPoints.Length; i++)
+        {
+            Vector3 relPos = bezierPoints[i] - curPos;
+            relPos.y = 0;
+            relDist[i] = Mathf.Abs(relPos.magnitude - targetDistDiff);
+
+            if (relDist[i] <= minDist)
+            {
+                minIdx = i;
+                minDist = relDist[i];
+            }
+        }
+        Vector3 subTarget = bezierPoints[minIdx];
+        Vector3 relVector = subTarget - curPos;
+        relVector.y = 0.0F;
+
+        float slope = relVector.z / relVector.x;
+        float a = 1.0F;
+        float b = Mathf.Pow(slope, 2);
+        float c = -Mathf.Pow(targetDistDiff, 2);
+
+        float xRelt1 = (-b + Mathf.Sqrt((b * b - 4 * a * c))) / (2 * a);
+        float xRelt2 = (-b - Mathf.Sqrt((b * b - 4 * a * c))) / (2 * a);
+
+        float yRelt1 = slope * xRelt1;
+        float yRelt2 = slope * xRelt2;
+
+    }
+
+
     Tuple<float, Vector3, Quaternion, float, float, float, float> GetRobotPath(int index, float timeInWay, float step, float threshold, float maxAcc, float maxSpeed, float gain, float saturation)
     {
         // timeInWay should start from 1 step (ex. 0.05 sec) except very first (absolute time 0.0 sec)
