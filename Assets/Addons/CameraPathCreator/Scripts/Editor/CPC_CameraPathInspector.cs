@@ -76,7 +76,7 @@ public class CPC_CameraPathInspector : Editor
 
     float robotMaxSpeed = 1.5F;
     float robotMaxHeight = 0.8602F + 0.461F;
-    float robotCtrlRate = 20.0F;
+    float robotCtrlRate = 50.0F;
     float robotMaxAcc = 0.5F;
     float robotAccTime = 1.0F;
     float deltaAppAlpha = 100F;
